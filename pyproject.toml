@@ -1,0 +1,57 @@
+[project]
+name = "Mastermind"
+dynamic = ["version"]
+description = "Evaluating LLMs using the game of mastermind."
+authors = [{ name = "Jonas Golde", email = "jonas.max.golde@hu-berlin.de" }]
+readme = "README.md"
+requires-python = ">3.8"
+license = { file = "LICENSE" }
+dependencies = [
+    "transformers",
+    "accelerate",
+    "torch",
+    "huggingface-hub[cli]",
+    "rootutils"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project.optional-dependencies]
+testing = ["pytest"]
+dev = ["black", "isort", "ruff"]
+
+[tool.setuptools]
+packages = ["mastermind"]
+package-dir = { "" = "src" }
+
+[tool.black]
+target-version = ["py38"]
+line-length = 120
+skip-string-normalization = true
+
+[tool.isort]
+profile = "black"
+line_length = 120
+known_third_party = [
+    "transformers",
+    "accelerate",
+    "torch",
+    "huggingface-hub[cli]",
+    "rootutils"
+]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+ignore = ["F405"]
