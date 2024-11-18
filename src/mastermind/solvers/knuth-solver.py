@@ -145,27 +145,29 @@ def KnuthFive(code_length: int = 4, num_colors: int = 6, init_guess: Tuple = (1,
 
 if __name__ == "__main__":
     global code
+    for i in range(1, 11):
+        # Create all 1296 possible Mastermind codes.
+        allCodes = [tuple(x) for x in itertools.product(range(1, 7), repeat=i)]
+        print(f"Number of all codes: {len(allCodes)}")
+        # Initialize statistics.
+        totalSolved = 0  # number of the 1296 codes that you solved
+        totalUnsolved = 0  # number of the 1296 codes that you didn't solve
+        worstCase = 0  # largest number of guesses used to solve a code
+        totalGuesses = 0  # total number of guesses used to solve all solved codes
+        init_guess = result = tuple([1] * (i // 2) + [2] * (i - i // 2))
 
-    # Create all 1296 possible Mastermind codes.
-    allCodes = [tuple(x) for x in itertools.product(range(1, 7), repeat=4)]
+        for code in tqdm(allCodes[2000:2100]):
+            guessList = KnuthFive(code_length=i, num_colors=6, init_guess=init_guess)
+            if guessList[-1] == code:
+                totalSolved += 1
+                numGuesses = len(guessList)
+                worstCase = numGuesses if numGuesses > worstCase else worstCase
+                totalGuesses += numGuesses
+                breakpoint()
+            else:
+                totalUnsolved += 1
 
-    # Initialize statistics.
-    totalSolved = 0  # number of the 1296 codes that you solved
-    totalUnsolved = 0  # number of the 1296 codes that you didn't solve
-    worstCase = 0  # largest number of guesses used to solve a code
-    totalGuesses = 0  # total number of guesses used to solve all solved codes
-
-    for code in tqdm(allCodes):
-        guessList = KnuthFive()
-        if guessList[-1] == code:
-            totalSolved += 1
-            numGuesses = len(guessList)
-            worstCase = numGuesses if numGuesses > worstCase else worstCase
-            totalGuesses += numGuesses
-        else:
-            totalUnsolved += 1
-
-    print("total solved: %d" % totalSolved)
-    print("worst case: %d" % worstCase)
-    print("average: %f" % (totalGuesses / totalSolved))
-    print("total unsolved: %d" % totalUnsolved)
+        print("total solved: %d" % totalSolved)
+        print("worst case: %d" % worstCase)
+        print("average: %f" % (totalGuesses / totalSolved))
+        print("total unsolved: %d" % totalUnsolved)
