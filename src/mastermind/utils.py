@@ -20,7 +20,7 @@ def make_output_path(base_path: Path = None) -> Path:
 
 def parse_guess(chat_history: CHAT_HISTORY) -> List[str]:
     # Regular expression to extract content within "Guess: [ ... ]"
-    matches = re.findall(r"(?:Guess:\s*)?\[([^\]]+)\]", chat_history[-1]['content'])
+    matches = re.findall(r"(?:Guess:\s*)?\[([^\]]+)\]", chat_history[-1]["content"])
     if matches:
         # Split the matched content into a list of strings
         return [item.strip().strip("'").strip('"') for item in matches[-1].split(",")]
