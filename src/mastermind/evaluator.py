@@ -47,9 +47,8 @@ class Evaluator:
         results = []
         for _ in range(num_games):
             chat_history = self.init_chat_history()
-            closest_score = 0
-            closest_guess = None
-            progress_bar = tqdm(total=self.game.max_guesses, desc="Attempts", unit="attempt")
+            progress_history = []
+            total_guesses_bar = tqdm(total=self.game.max_guesses, desc="Attempts", unit="attempt")
 
             while self.state == GameState.ONGOING:
                 chat_history = self.model(chat_history)
@@ -58,21 +57,18 @@ class Evaluator:
                     # TODO: should we allow for retries if the model is too dumb to generate a 4 colors?
                     pass
 
-                exact_matches, partial_matches, hint = self.game.evaluate(guess)
-                current_score = (2 * exact_matches) + partial_matches
-                if current_score > closest_score:
-                    closest_score = current_score
-                    closest_guess = guess
+                exact_matches, _, progress, hint = self.game.evaluate(guess)
+                progress_history.append(progress)
 
                 self.attempts += 1
-                progress_bar.update(1)
+                total_guesses_bar.update(1)
 
                 if exact_matches == self.game.code_length:
                     self.state = GameState.WON
-                    progress_bar.close()
+                    total_guesses_bar.close()
                 elif self.attempts >= self.game.max_guesses:
                     self.state = GameState.LOST
-                    progress_bar.close()
+                    total_guesses_bar.close()
                 else:
                     chat_history.append({"role": "user", "content": f"Feedback: {hint}.\nGuess: "})
 
@@ -83,8 +79,7 @@ class Evaluator:
                     "num_guesses": self.attempts,
                     "game": self.game.to_json(),
                     "model": self.model.get_model_info(),
-                    "closest_score": closest_score,
-                    "closest_guess": closest_guess,
+                    "progress_history": progress_history,
                 }
             )
             self.reset()
