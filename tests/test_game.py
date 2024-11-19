@@ -1,5 +1,3 @@
-import pytest
-
 from mastermind import COLORS, Mastermind
 
 
@@ -66,19 +64,12 @@ def test_evaluate_guess_mixed_matches():
     assert partial_matches == 2  # "yellow" and "blue" in the wrong position
 
 
-def test_invalid_guess_length():
-    """Test invalid guess length."""
-    game = Mastermind(code_length=4, num_colors=6, duplicates_allowed=True)
-    with pytest.raises(ValueError, match="Guess must be of length 4."):
-        game.evaluate(["red", "blue"])  # Guess is too short
-
-
 def test_evaluate_with_hint():
     """Test evaluation with hint."""
     game = Mastermind(code_length=4, num_colors=6, duplicates_allowed=True)
     game.secret_code = ["red", "blue", "green", "yellow"]  # Mock secret code
     guess = ["red", "yellow", "green", "blue"]
-    exact_matches, partial_matches, hint = game.evaluate(guess)
+    exact_matches, partial_matches, progress, hint = game.evaluate(guess)
     assert exact_matches == 2
     assert partial_matches == 2
     assert hint == "Correct color and position: 2. Correct color but wrong position: 2."

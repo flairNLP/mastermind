@@ -49,39 +49,53 @@ class Evaluator:
             chat_history = self.init_chat_history()
             progress_history = []
             total_guesses_bar = tqdm(total=self.game.max_guesses, desc="Attempts", unit="attempt")
+            try:
+                while self.state == GameState.ONGOING:
+                    chat_history = self.model(chat_history)
+                    guess = parse_guess(chat_history)
 
-            while self.state == GameState.ONGOING:
-                chat_history = self.model(chat_history)
-                guess = parse_guess(chat_history)
-                if len(guess) != self.game.code_length:
-                    # TODO: should we allow for retries if the model is too dumb to generate a 4 colors?
-                    pass
+                    exact_matches, _, progress, hint = self.game.evaluate(guess)
+                    progress_history.append(progress)
 
-                exact_matches, _, progress, hint = self.game.evaluate(guess)
-                progress_history.append(progress)
+                    self.attempts += 1
+                    total_guesses_bar.update(1)
 
-                self.attempts += 1
-                total_guesses_bar.update(1)
+                    if exact_matches == self.game.code_length:
+                        self.state = GameState.WON
+                        total_guesses_bar.close()
+                    elif self.attempts >= self.game.max_guesses:
+                        self.state = GameState.LOST
+                        total_guesses_bar.close()
+                    else:
+                        chat_history.append({"role": "user", "content": f"Feedback: {hint}.\nGuess: "})
 
-                if exact_matches == self.game.code_length:
-                    self.state = GameState.WON
-                    total_guesses_bar.close()
-                elif self.attempts >= self.game.max_guesses:
-                    self.state = GameState.LOST
-                    total_guesses_bar.close()
-                else:
-                    chat_history.append({"role": "user", "content": f"Feedback: {hint}.\nGuess: "})
+                results.append(
+                    {
+                        "chat_history": chat_history,
+                        "valid": True,
+                        "solved": False if self.state == GameState.LOST else True,
+                        "num_guesses": self.attempts,
+                        "game": self.game.to_json(),
+                        "model": self.model.get_model_info(),
+                        "progress_history": progress_history,
+                    }
+                )
 
-            results.append(
-                {
-                    "chat_history": chat_history,
-                    "solved": False if self.state == GameState.LOST else True,
-                    "num_guesses": self.attempts,
-                    "game": self.game.to_json(),
-                    "model": self.model.get_model_info(),
-                    "progress_history": progress_history,
-                }
-            )
+            except Exception as e:
+                print(f"Error occurred: {e}")
+                results.append(
+                    {
+                        "chat_history": chat_history,
+                        "valid": False,
+                        "solved": False,
+                        "num_guesses": self.attempts,
+                        "game": self.game.to_json(),
+                        "model": self.model.get_model_info(),
+                        "progress_history": progress_history,
+                        "error": str(e),
+                    }
+                )
+
             self.reset()
 
         if save_results:
