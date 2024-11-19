@@ -1,5 +1,7 @@
 import random
-from typing import List, Tuple
+from collections import Counter
+from itertools import product
+from typing import Dict, List, Tuple
 
 COLORS = [
     "red",
@@ -14,9 +16,10 @@ COLORS = [
     "white",
 ]
 
-EXACT_MATCHES = int
-PARTIAL_MATCHES = int
-HINT = str
+ExactMatches = int
+PartialMatches = int
+Progress = float
+Hint = str
 
 
 class Mastermind:
@@ -29,12 +32,27 @@ class Mastermind:
         self.possible_colors = random.sample(COLORS, k=num_colors)
         self.duplicates_allowed = duplicates_allowed
         self.secret_code = self._generate_secret_code()
+        self.progress_lookup = self.precompute_progress()
 
     def _generate_secret_code(self) -> List[str]:
         if self.duplicates_allowed:
             return random.choices(self.possible_colors, k=self.code_length)
         else:
             return random.sample(self.possible_colors, k=self.code_length)
+
+    def precompute_progress(self) -> Dict[Tuple[int, int], Dict[str, float]]:
+        all_possible_codes = list(product(self.possible_colors, repeat=self.code_length))
+        all_hints = Counter([self.evaluate_guess(code) for code in all_possible_codes])
+
+        progress_lookup = {}
+        for key in all_hints.keys():
+            cumulative_progress = sum(value for k, value in all_hints.items() if k[0] >= key[0] and k[1] >= key[1])
+            progress_lookup[key] = {
+                "percent": 1 - (cumulative_progress / len(all_possible_codes)) if not cumulative_progress == 1 else 1.0,
+                "remaining_states": cumulative_progress,
+            }
+
+        return progress_lookup
 
     def evaluate_guess(self, guess: List[str]) -> Tuple[int, int]:
         exact_matches = sum(s == g for s, g in zip(self.secret_code, guess))
@@ -45,12 +63,14 @@ class Mastermind:
 
         return exact_matches, partial_matches
 
-    def evaluate(self, guess: List[str]) -> Tuple[EXACT_MATCHES, PARTIAL_MATCHES, HINT]:
+    def evaluate(self, guess: List[str]) -> Tuple[ExactMatches, PartialMatches, Progress, Hint]:
         exact_matches, partial_matches = self.evaluate_guess(guess)
+        progress = self.progress_lookup.get((exact_matches, partial_matches), 0.0)
 
         return (
             exact_matches,
             partial_matches,
+            progress,
             f"Correct color and position: {exact_matches}. Correct color but wrong position: {partial_matches}.",
         )
 
