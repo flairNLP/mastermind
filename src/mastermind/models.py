@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 
 from transformers import pipeline
 
-CHAT_HISTORY = List[Dict[str, str]]
+ChatHistory = List[Dict[str, str]]
 
 
 @dataclass
@@ -22,7 +22,7 @@ class GenerationArgs:
 
 class LanguageModel(ABC):
     @abstractmethod
-    def __call__(self, chat_history: CHAT_HISTORY) -> CHAT_HISTORY:
+    def __call__(self, chat_history: ChatHistory) -> ChatHistory:
         pass
 
     @abstractmethod
@@ -38,7 +38,7 @@ class HFModel(LanguageModel):
         self.pipe = pipeline("text-generation", model=model_name, device=device, **kwargs)
         self.generation_args = generation_args or GenerationArgs()
 
-    def __call__(self, chat_history: CHAT_HISTORY, **kwargs) -> CHAT_HISTORY:
+    def __call__(self, chat_history: ChatHistory, **kwargs) -> ChatHistory:
         return self.pipe(chat_history, **self.generation_args, **kwargs)[0]["generated_text"]
 
     def get_model_info(self) -> str:
@@ -57,7 +57,7 @@ class OpenAIModel(LanguageModel):
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.generation_args = generation_args or GenerationArgs()
 
-    def __call__(self, chat_history: CHAT_HISTORY) -> CHAT_HISTORY:
+    def __call__(self, chat_history: ChatHistory) -> ChatHistory:
         response = self.client.chat.completions.create(
             model=self.model_name,
             messages=chat_history,
@@ -85,7 +85,7 @@ class AnthropicModel(LanguageModel):
         self.client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         self.generation_args = generation_args or GenerationArgs()
 
-    def __call__(self, chat_history: CHAT_HISTORY) -> CHAT_HISTORY:
+    def __call__(self, chat_history: ChatHistory) -> ChatHistory:
         """Convert chat history to Anthropic format and make API call."""
 
         # NOTE: Anthropic model requires the system message to be explicitly set,
@@ -93,9 +93,9 @@ class AnthropicModel(LanguageModel):
         response = self.client.messages.create(
             model=self.model_name,
             system=chat_history[0]["content"],
-            messages=chat_history[1:]
-            if len(chat_history) > 1
-            else [{"role": "user", "content": "Take your first guess"}],
+            messages=(
+                chat_history[1:] if len(chat_history) > 1 else [{"role": "user", "content": "Take your first guess"}]
+            ),
             max_tokens=self.generation_args.max_tokens,
             temperature=self.generation_args.temperature,
         )
