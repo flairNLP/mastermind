@@ -5,7 +5,7 @@ from typing import List
 
 import rootutils
 
-from mastermind.models import CHAT_HISTORY
+from mastermind.models import ChatHistory
 
 
 def make_output_path(base_path: Path = None) -> Path:
@@ -18,7 +18,7 @@ def make_output_path(base_path: Path = None) -> Path:
     return output_path
 
 
-def parse_guess(chat_history: CHAT_HISTORY) -> List[str]:
+def parse_guess(chat_history: ChatHistory) -> List[str]:
     # Regular expression to extract content within "Guess: [ ... ]"
     matches = re.findall(r"(?:Guess:\s*)?\[([^\]]+)\]", chat_history[-1]["content"])
     if matches:
