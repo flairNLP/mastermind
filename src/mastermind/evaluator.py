@@ -10,7 +10,7 @@ from mastermind.game import Mastermind
 from mastermind.models import LanguageModel
 from mastermind.utils import make_output_path, parse_guess
 
-RESULT = Dict[str, str]
+GameResult = Dict[str, str]
 
 
 class GameState(Enum):
@@ -39,9 +39,9 @@ class Evaluator:
         )
         self.state = GameState.ONGOING
 
-    def run(self, num_games: int = 1, save_results: bool = False, save_path: Optional[Path] = None) -> List[RESULT]:
+    def run(self, num_games: int = 1, save_results: bool = False, save_path: Optional[Path] = None) -> List[GameResult]:
         results = []
-        for game in range(num_games + 1):
+        for _ in range(num_games):
             chat_history = [{"role": "system", "content": self.task_instruction}]
             closest_score = 0
             closest_guess = None
@@ -83,6 +83,7 @@ class Evaluator:
                     "closest_guess": closest_guess,
                 }
             )
+            self.reset()
 
         if save_results:
             if save_path is None:
@@ -91,3 +92,8 @@ class Evaluator:
                 json.dump(results, f, indent=4)
 
         return results
+
+    def reset(self):
+        self.game.reset()
+        self.state = GameState.ONGOING
+        self.attempts = 0
