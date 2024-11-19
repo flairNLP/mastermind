@@ -1,13 +1,26 @@
+import os
 from abc import ABC, abstractmethod
-from typing import Dict, List
+from dataclasses import dataclass
+from typing import Dict, List, Optional
 
 from transformers import pipeline
 
 CHAT_HISTORY = List[Dict[str, str]]
 
 
-class LanguageModel(ABC):
+@dataclass
+class GenerationArgs:
+    max_tokens: int = 1024
+    temperature: float = 0.7
 
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+    def keys(self):
+        return self.__annotations__.keys()
+
+
+class LanguageModel(ABC):
     @abstractmethod
     def __call__(self, chat_history: CHAT_HISTORY) -> CHAT_HISTORY:
         pass
@@ -18,37 +31,78 @@ class LanguageModel(ABC):
 
 
 class HFModel(LanguageModel):
-
-    def __init__(self, model_name: str, **kwargs):
+    def __init__(
+        self, model_name: str, device: str = "cuda", generation_args: Optional[GenerationArgs] = None, **kwargs
+    ):
         self.model_name = model_name
-        self.pipe = pipeline("text-generation", model=model_name, device="mps", **kwargs)
+        self.pipe = pipeline("text-generation", model=model_name, device=device, **kwargs)
+        self.generation_args = generation_args or GenerationArgs()
 
     def __call__(self, chat_history: CHAT_HISTORY, **kwargs) -> CHAT_HISTORY:
-        return self.pipe(chat_history, max_new_tokens=128, **kwargs)[0]['generated_text']
+        return self.pipe(chat_history, **self.generation_args, **kwargs)[0]["generated_text"]
 
     def get_model_info(self) -> str:
-        return self.model_name
+        return f"HF Model: {self.model_name}"
 
 
 class OpenAIModel(LanguageModel):
+    def __init__(self, model_name: str = "gpt-4-turbo-preview", generation_args: Optional[GenerationArgs] = None):
+        """Initialize OpenAI model with API key from environment variables."""
+        try:
+            from openai import OpenAI
+        except ImportError:
+            raise ImportError("Please install the openai package with 'pip install openai'")
 
-    def __init__(self):
-        pass
+        self.model_name = model_name
+        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.generation_args = generation_args or GenerationArgs()
 
     def __call__(self, chat_history: CHAT_HISTORY) -> CHAT_HISTORY:
-        pass
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=chat_history,
+            temperature=self.generation_args.temperature,
+            max_tokens=self.generation_args.max_tokens,
+        )
+
+        chat_history.append({"content": response.choices[0].message.content, "role": "assistant"})
+
+        return chat_history
 
     def get_model_info(self) -> str:
-        pass
+        return f"OpenAI Model: {self.model_name}"
 
 
 class AnthropicModel(LanguageModel):
+    def __init__(self, model_name: str = "claude-3-opus-20240229", generation_args: Optional[GenerationArgs] = None):
+        """Initialize Anthropic model with API key from environment variables."""
+        try:
+            from anthropic import Anthropic
+        except ImportError:
+            raise ImportError("Please install the anthropic package with 'pip install anthropic'")
 
-    def __init__(self):
-        pass
+        self.model_name = model_name
+        self.client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        self.generation_args = generation_args or GenerationArgs()
 
     def __call__(self, chat_history: CHAT_HISTORY) -> CHAT_HISTORY:
-        pass
+        """Convert chat history to Anthropic format and make API call."""
+
+        # NOTE: Anthropic model requires the system message to be explicitly set,
+        # so we have to fill the first message with a user message, as empty messages are not allowed
+        response = self.client.messages.create(
+            model=self.model_name,
+            system=chat_history[0]["content"],
+            messages=chat_history[1:]
+            if len(chat_history) > 1
+            else [{"role": "user", "content": "Take your first guess"}],
+            max_tokens=self.generation_args.max_tokens,
+            temperature=self.generation_args.temperature,
+        )
+
+        chat_history.append({"content": response.content[0].text, "role": "assistant"})
+
+        return chat_history
 
     def get_model_info(self) -> str:
-        pass
+        return f"Anthropic Model: {self.model_name}"
