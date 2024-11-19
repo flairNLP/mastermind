@@ -93,9 +93,7 @@ class AnthropicModel(LanguageModel):
         response = self.client.messages.create(
             model=self.model_name,
             system=chat_history[0]["content"],
-            messages=(
-                chat_history[1:] if len(chat_history) > 1 else [{"role": "user", "content": "Take your first guess"}]
-            ),
+            messages=chat_history[1:],
             max_tokens=self.generation_args.max_tokens,
             temperature=self.generation_args.temperature,
         )
