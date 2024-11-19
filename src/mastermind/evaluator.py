@@ -94,5 +94,6 @@ class Evaluator:
         return results
 
     def reset(self):
+        self.game.reset()
         self.state = GameState.ONGOING
         self.attempts = 0

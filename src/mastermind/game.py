@@ -54,6 +54,9 @@ class Mastermind:
             f"Correct color and position: {exact_matches}. Correct color but wrong position: {partial_matches}.",
         )
 
+    def reset(self):
+        self.secret_code = self._generate_secret_code()
+
     def to_json(self):
         return {
             "code_length": self.code_length,
