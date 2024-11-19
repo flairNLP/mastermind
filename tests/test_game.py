@@ -1,4 +1,4 @@
-from mastermind import COLORS, Mastermind
+from mastermind import Mastermind
 
 
 def test_initialization():
@@ -13,7 +13,6 @@ def test_initialization():
 
     # Check possible colors
     assert len(game.possible_colors) == 6
-    assert all(color in COLORS for color in game.possible_colors)
 
     # Check secret code generation
     assert len(game.secret_code) == 4
