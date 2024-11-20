@@ -1,7 +1,59 @@
-from __future__ import print_function
+import itertools
+import json
+from abc import ABC, abstractmethod
+from typing import List
+
+from tqdm import tqdm
+
+from mastermind.evaluator import GameResult
+from mastermind.game import Mastermind
+from mastermind.utils import make_output_path
+
+
+class Solver(ABC):
+    def __init__(self, game: Mastermind):
+        self.game = game
+
+    @abstractmethod
+    def solve(self, num_runs: int = 1, save_results: bool = False, save_path: str = None) -> List[GameResult]:
+        raise NotImplementedError
+
+
+class KnuthSolver(Solver):
+    def __init__(self, game: Mastermind):
+        super().__init__(game)
+
+    def solve(self, num_runs: int = 1, save_results: bool = False, save_path: str = None) -> List[GameResult]:
+        results = []
+
+        for _ in range(num_runs):
+            # TODO: Solve puzzle like
+            # guesses = KnuthFive(self.game.secret_code, self.game.code_length, self.game.possible_colors) # returning the runtime per game would be cool
+            # if guesses[-1] == self.game.secret_code:
+            #     total_solved += 1
+            #     total_guesses += len(guesses)
+            #     worst_case = max(worst_case, len(guesses))
+            #     results.append({'solved': True, 'num_guesses': len(guesses), ...})
+            # else:
+            #     results.append({'solved': False, 'num_guesses': len(guesses), ...})
+            self.game.reset()
+
+        if save_results:
+            if save_path is None:
+                save_path = make_output_path()
+            with open(save_path / "result.json", "w") as f:
+                json.dump(results, f, indent=4)
+
+        return results
+
+
+############################################################################################################
 from __future__ import division  # this ensures the / operation give floats by default
+from __future__ import print_function
+
 import itertools
 from typing import Tuple
+
 from tqdm import tqdm
 
 
