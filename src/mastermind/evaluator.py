@@ -67,7 +67,7 @@ class Evaluator:
                         self.state = GameState.LOST
                         total_guesses_bar.close()
                     else:
-                        chat_history.append({"role": "user", "content": f"Feedback: {hint}.\nGuess: "})
+                        chat_history.append({"role": "user", "content": f"Feedback: {hint}\nGuess: "})
 
                 results.append(
                     {
