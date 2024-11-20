@@ -20,6 +20,7 @@ ExactMatches = int
 PartialMatches = int
 Progress = float
 Hint = str
+ProgressLookup = Dict[Tuple[int, int], Dict[str, float]]
 
 
 class Mastermind:
@@ -29,10 +30,10 @@ class Mastermind:
         self.code_length = code_length
         self.max_guesses = max_guesses
         self.num_colors = num_colors
-        self.possible_colors = random.sample(COLORS, k=num_colors)
         self.duplicates_allowed = duplicates_allowed
-        self.secret_code = self._generate_secret_code()
-        self.progress_lookup = self.precompute_progress()
+        self.possible_colors: List[str] = random.sample(COLORS, k=num_colors)
+        self.secret_code: List[str] = self._generate_secret_code()
+        self.progress_lookup: ProgressLookup = self.precompute_progress()
 
     def _generate_secret_code(self) -> List[str]:
         if self.duplicates_allowed:
@@ -40,7 +41,7 @@ class Mastermind:
         else:
             return random.sample(self.possible_colors, k=self.code_length)
 
-    def precompute_progress(self) -> Dict[Tuple[int, int], Dict[str, float]]:
+    def precompute_progress(self) -> ProgressLookup:
         all_possible_codes = list(product(self.possible_colors, repeat=self.code_length))
         all_hints = Counter([self.evaluate_guess(code) for code in all_possible_codes])
 
@@ -75,6 +76,7 @@ class Mastermind:
         )
 
     def reset(self):
+        self.possible_colors = random.sample(COLORS, k=self.num_colors)
         self.secret_code = self._generate_secret_code()
 
     def to_json(self):
