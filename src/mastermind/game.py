@@ -56,6 +56,7 @@ class Mastermind:
         return progress_lookup
 
     def evaluate_guess(self, guess: List[str]) -> Tuple[int, int]:
+
         exact_matches = sum(s == g for s, g in zip(self.secret_code, guess))
         partial_matches = (
             sum(min(self.secret_code.count(color), guess.count(color)) for color in set(self.secret_code))
