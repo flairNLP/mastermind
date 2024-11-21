@@ -36,14 +36,3 @@ if __name__ == "__main__":
     evaluator = Evaluator(game, model)
     result = evaluator.run(num_games=args.num_runs, save_results=args.save_results, save_path=args.save_path)
     print_summary(model, game, args, result)
-    # import pprint as pp
-    # print("=== Summary ===")
-    # print(f"Model: {model.get_model_info()}")
-    # print(f"Code Length: {game.code_length}")
-    # print(f"Number of Colors: {game.num_colors}")
-    # print(f"Code: {game.secret_code}")
-    # print(f"Duplicates Allowed: {game.duplicates_allowed}")
-    # print(f"Max Guesses: {game.max_guesses}")
-    # print(f"Games Player: {args.num_runs}")
-    # print(f"Games Won: {sum(r['solved'] for r in result)}")
-
