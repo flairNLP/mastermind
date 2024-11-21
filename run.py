@@ -4,12 +4,13 @@ from argparse import ArgumentParser
 from mastermind.evaluator import Evaluator
 from mastermind.game import Mastermind
 from mastermind.models import AnthropicModel, HFModel, OpenAIModel
+from mastermind.utils import print_summary
 
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--model", type=str, default="gpt2", help="Model name.")
     parser.add_argument("--model_type", type=str, default="hf", help="Model type.")
-    parser.add_argument("--generation_kwargs", type=dict, default={}, help="Generation kwargs.")
+    parser.add_argument("--generation_kwargs", type=str, default={}, help="Generation kwargs.")
     parser.add_argument("--code_length", type=int, default=4, help="Code length of the game.")
     parser.add_argument("--num_colors", type=int, default=6, help="Number of colors in the game.")
     parser.add_argument("--duplicates_allowed", action="store_true", help="Allow duplicates in the code.")
@@ -33,4 +34,5 @@ if __name__ == "__main__":
         model = AnthropicModel(model_name=args.model)
 
     evaluator = Evaluator(game, model)
-    evaluator.run(num_games=args.num_runs, save_results=args.save_results, save_path=args.save_path)
+    result = evaluator.run(num_games=args.num_runs, save_results=args.save_results, save_path=args.save_path)
+    print_summary(model, game, args, result)
