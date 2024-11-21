@@ -4,12 +4,13 @@ from argparse import ArgumentParser
 from mastermind.evaluator import Evaluator
 from mastermind.game import Mastermind
 from mastermind.models import AnthropicModel, HFModel, OpenAIModel
+from mastermind.utils import print_summary
 
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--model", type=str, default="gpt2", help="Model name.")
     parser.add_argument("--model_type", type=str, default="hf", help="Model type.")
-    parser.add_argument("--generation_kwargs", type=dict, default={}, help="Generation kwargs.")
+    parser.add_argument("--generation_kwargs", type=str, default={}, help="Generation kwargs.")
     parser.add_argument("--code_length", type=int, default=4, help="Code length of the game.")
     parser.add_argument("--num_colors", type=int, default=6, help="Number of colors in the game.")
     parser.add_argument("--duplicates_allowed", action="store_true", help="Allow duplicates in the code.")
@@ -33,4 +34,16 @@ if __name__ == "__main__":
         model = AnthropicModel(model_name=args.model)
 
     evaluator = Evaluator(game, model)
-    evaluator.run(num_games=args.num_runs, save_results=args.save_results, save_path=args.save_path)
+    result = evaluator.run(num_games=args.num_runs, save_results=args.save_results, save_path=args.save_path)
+    print_summary(model, game, args, result)
+    # import pprint as pp
+    # print("=== Summary ===")
+    # print(f"Model: {model.get_model_info()}")
+    # print(f"Code Length: {game.code_length}")
+    # print(f"Number of Colors: {game.num_colors}")
+    # print(f"Code: {game.secret_code}")
+    # print(f"Duplicates Allowed: {game.duplicates_allowed}")
+    # print(f"Max Guesses: {game.max_guesses}")
+    # print(f"Games Player: {args.num_runs}")
+    # print(f"Games Won: {sum(r['solved'] for r in result)}")
+
