@@ -10,10 +10,14 @@ from tqdm import tqdm
 from mastermind.game import Mastermind
 from mastermind.models import ChatHistory, LanguageModel
 from mastermind.solvers import Solver
-from mastermind.utils import make_output_path, parse_guess
+from mastermind.utils import COLOR_MAP, RESET, make_output_path, parse_guess
 
 GameResult = Dict[str, str]
 Progress = Dict[str, bool]
+
+GREEN = COLOR_MAP["green"]
+RED = COLOR_MAP["red"]
+YELLOW = COLOR_MAP["yellow"]
 
 
 class GameState(Enum):
@@ -65,12 +69,14 @@ class Evaluator:
         compute_progress: bool = False,
     ) -> List[GameResult]:
         results = []
-        for _ in range(num_games):
+        for num_game in range(num_games):
             chat_history = self._init_chat_history()
             if compute_progress:
                 self._init_progress_attributes()
                 progress_history = []
-            total_guesses_bar = tqdm(total=self.game.max_guesses, desc="Attempts", unit="attempt")
+            total_guesses_bar = tqdm(
+                total=self.game.max_guesses, desc=f"{YELLOW}[Game #{num_game}]{RESET} Attempts", unit="attempt"
+            )
             try:
                 while self.state == GameState.ONGOING:
                     chat_history = self.model(chat_history)
@@ -85,13 +91,17 @@ class Evaluator:
                     total_guesses_bar.update(1)
 
                     if exact_matches == self.game.code_length:
+                        total_guesses_bar.desc = f"{GREEN}[Game #{num_game}] Game Solved{RESET}"
+                        total_guesses_bar.refresh()
                         self.state = GameState.WON
                         total_guesses_bar.close()
                     elif self.attempts >= self.game.max_guesses:
+                        total_guesses_bar.desc = f"{RED}[Game #{num_game}] Game Over{RESET}"
+                        total_guesses_bar.refresh()
                         self.state = GameState.LOST
                         total_guesses_bar.close()
                     else:
-                        chat_history.append({"role": "user", "content": f"Feedback: {hint}.\nGuess: "})
+                        chat_history.append({"role": "user", "content": f"Feedback: {hint}\nGuess: "})
 
                 results.append(
                     {

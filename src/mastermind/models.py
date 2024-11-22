@@ -1,9 +1,12 @@
 import os
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
-from transformers import pipeline
+from lmformatenforcer import RegexParser
+from lmformatenforcer.integrations.transformers import build_transformers_prefix_allowed_tokens_fn
+from transformers import AutoModelForCausalLM, AutoTokenizer, LogitsProcessor, LogitsProcessorList, pipeline
 
 ChatHistory = List[Dict[str, str]]
 
@@ -19,6 +22,14 @@ class GenerationArgs:
     def keys(self):
         return self.__annotations__.keys()
 
+    def hf_format(self):
+        return {self._to_hf_format(k): v for k, v in self.__dict__.items() if v is not None}
+
+    def _to_hf_format(self, arg):
+        if arg == "max_tokens":
+            return "max_new_tokens"
+        return arg
+
 
 class LanguageModel(ABC):
     @abstractmethod
@@ -32,14 +43,30 @@ class LanguageModel(ABC):
 
 class HFModel(LanguageModel):
     def __init__(
-        self, model_name: str, device: str = "cuda", generation_args: Optional[GenerationArgs] = None, **kwargs
+        self,
+        model_name: str,
+        device: str = "cuda",
+        generation_args: Optional[GenerationArgs] = None,
+        regex_constrained=True,
+        **kwargs,
     ):
         self.model_name = model_name
+        self.regex_constrained = regex_constrained
+        self.game_regex = r"Guess: \[(red|blue|green|yellow|orange|purple|pink|brown|black|white)(,\s*(red|blue|green|yellow|orange|purple|pink|brown|black|white))*\]"
+
         self.pipe = pipeline("text-generation", model=model_name, device=device, **kwargs)
+        if self.regex_constrained:
+            parser = RegexParser(self.game_regex)
+            self.prefix_function = build_transformers_prefix_allowed_tokens_fn(self.pipe.tokenizer, parser)
         self.generation_args = generation_args or GenerationArgs()
 
     def __call__(self, chat_history: ChatHistory, **kwargs) -> ChatHistory:
-        return self.pipe(chat_history, **self.generation_args, **kwargs)[0]["generated_text"]
+        return self.pipe(
+            chat_history,
+            prefix_allowed_tokens_fn=None if not self.regex_constrained else self.prefix_function,
+            **self.generation_args.hf_format(),
+            **kwargs,
+        )[0]["generated_text"]
 
     def get_model_info(self) -> str:
         return f"HF Model: {self.model_name}"

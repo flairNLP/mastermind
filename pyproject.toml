@@ -11,7 +11,8 @@ dependencies = [
     "accelerate",
     "torch",
     "huggingface-hub[cli]",
-    "rootutils"
+    "rootutils",
+    "lm-format-enforcer"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
