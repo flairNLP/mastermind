@@ -28,10 +28,13 @@ result = evalutor.run(num_games=2, save_results=True)
 
 Using Solvers.
 ```python
-from mastermind.game import Mastermind
-from mastermind.solvers import KnuthSolver
+    game = Mastermind()
+    solver = KnuthSolver(game=game)
+    evaluator = Evaluator(game=game, model=solver)
+    evaluator.run(num_games=2, save_results=True)
+```
 
-game = Mastermind()
-solver = KnuthSolver(game=game)
-solver.solve(num_games=2, save_results=True)
+If you want to track progress of guesses:
+```python
+    evaluator.run(num_games=2, save_results=True, compute_progress=True)
 ```
