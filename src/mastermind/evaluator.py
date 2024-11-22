@@ -53,11 +53,13 @@ class Evaluator:
             f"- You have a total of {self.game.max_guesses} guesses.\n"
             "- After each guess, I will provide feedback on:\n"
             "  1. How many guesses are the correct color and in the correct position.\n"
-            "  2. How many guesses are the correct color but in the wrong position.\n\n"
-            "We interact like in the following example:\n###\n"
-            f"Guess: {random.sample(self.game.possible_colors, k=self.game.code_length)}\n\n"
-            "Feedback: Correct color and position: <number>. Correct color but wrong position: <number>.\n"
-            "###\n\n"
+            "  2. How many guesses are the correct color but in the wrong position.\n"
+            "- Consider the feedback from all your guesses to find out the secret code.\n"
+            "- You can must clearly indicate your final answer by preprending 'GUESS:' to it.\n\n"
+            "### Example:\n"
+            f"What's your next guess? GUESS:{random.sample(self.game.possible_colors, k=self.game.code_length)}\n"
+            "Feedback: <number> color(s) in the correct position(s). <number> color(s) but wrong position(s).\n"
+            "###"
         )
         return [{"role": "user", "content": task_instruction}, {"role": "user", "content": "Guess: "}]
 
