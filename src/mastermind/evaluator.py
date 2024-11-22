@@ -1,16 +1,19 @@
 import json
 import random
 from enum import Enum, auto
+from itertools import product
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from tqdm import tqdm
 
 from mastermind.game import Mastermind
 from mastermind.models import ChatHistory, LanguageModel
+from mastermind.solvers import Solver
 from mastermind.utils import make_output_path, parse_guess
 
 GameResult = Dict[str, str]
+Progress = Dict[str, bool]
 
 
 class GameState(Enum):
@@ -20,13 +23,24 @@ class GameState(Enum):
 
 
 class Evaluator:
-    def __init__(self, game: Mastermind, model: LanguageModel):
+    def __init__(self, game: Mastermind, model: Union[LanguageModel, Solver], compute_progress: bool = False):
         self.game = game
         self.model = model
         self.attempts = 0
         self.state = GameState.ONGOING
+        self.compute_progress = compute_progress
 
-    def init_chat_history(self) -> ChatHistory:
+    def _init_progress_attributes(self):
+        self.all_possible_scores = self.game.compute_all_possible_scores()
+        self.unused_guesses = [list(code) for code in product(self.game.possible_colors, repeat=self.game.code_length)]
+        self.remaining_states = [
+            list(code) for code in product(self.game.possible_colors, repeat=self.game.code_length)
+        ]
+        self.optimal_next_guesses = [
+            list(code) for code in product(self.game.possible_colors, repeat=self.game.code_length)
+        ]
+
+    def _init_chat_history(self) -> ChatHistory:
         task_instruction = (
             f"Your task is to solve the game of Mastermind. The game is defined as follows:\n"
             f"- You have to find out the {self.game.code_length}-color secret code.\n"
@@ -43,19 +57,29 @@ class Evaluator:
         )
         return [{"role": "user", "content": task_instruction}, {"role": "user", "content": "Guess: "}]
 
-    def run(self, num_games: int = 1, save_results: bool = False, save_path: Optional[Path] = None) -> List[GameResult]:
+    def run(
+        self,
+        num_games: int = 1,
+        save_results: bool = False,
+        save_path: Optional[Path] = None,
+        compute_progress: bool = False,
+    ) -> List[GameResult]:
         results = []
         for _ in range(num_games):
-            chat_history = self.init_chat_history()
-            progress_history = []
+            chat_history = self._init_chat_history()
+            if compute_progress:
+                self._init_progress_attributes()
+                progress_history = []
             total_guesses_bar = tqdm(total=self.game.max_guesses, desc="Attempts", unit="attempt")
             try:
                 while self.state == GameState.ONGOING:
                     chat_history = self.model(chat_history)
                     guess = parse_guess(chat_history)
 
-                    exact_matches, _, progress, hint = self.game.evaluate(guess)
-                    progress_history.append(progress)
+                    exact_matches, partial_matches, hint = self.game.evaluate(guess)
+                    if compute_progress:
+                        progress = self.progress(guess, exact_matches, partial_matches)
+                        progress_history.append(progress)
 
                     self.attempts += 1
                     total_guesses_bar.update(1)
@@ -106,7 +130,37 @@ class Evaluator:
 
         return results
 
+    def progress(self, guess: List[str], exact_matches: int, partial_matches: int) -> Progress:
+        self.unused_guesses.remove(guess)
+        is_logical_guess = guess in self.remaining_states
+        self.compute_remaining_states(guess, exact_matches, partial_matches)
+        is_optimal_guess = guess in self.optimal_next_guesses
+        self.compute_optimal_next_guesses()
+        return {"is_logical_guess": is_logical_guess, "is_optimal_guess": is_optimal_guess}
+
+    def compute_remaining_states(self, current_guess: List[str], exact_matches: int, partial_matches: int):
+        tmp = []
+        for possible_code in self.remaining_states:
+            if self.game.evaluate_guess(current_guess, possible_code) == (exact_matches, partial_matches):
+                tmp.append(possible_code)
+        self.remaining_states = tmp[:]
+
+    def compute_optimal_next_guesses(self):
+        minimax_scores = []
+        for item in self.unused_guesses:
+            hit_count = [0] * len(self.all_possible_scores)
+            for possible_code in self.remaining_states:
+                hit_count[self.all_possible_scores.index(self.game.evaluate_guess(possible_code, item))] += 1
+            minimax_scores.append(len(self.remaining_states) - max(hit_count))
+
+        max_score = max(minimax_scores)
+        indices = [i for i, x in enumerate(minimax_scores) if x == max_score]
+        optimal_next_guesses = [self.unused_guesses[i] for i in indices]
+        self.optimal_next_guesses = optimal_next_guesses
+
     def reset(self):
         self.game.reset()
         self.state = GameState.ONGOING
         self.attempts = 0
+        if isinstance(self.model, Solver):
+            self.model.reset()
