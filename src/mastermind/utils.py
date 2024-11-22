@@ -1,7 +1,6 @@
 import re
 from datetime import datetime
 from pathlib import Path
-from textwrap import TextWrapper
 from typing import List, Optional
 
 import rootutils
@@ -34,12 +33,18 @@ def make_output_path(base_path: Optional[Path] = None) -> Path:
 
 
 def parse_guess(chat_history: ChatHistory) -> List[str]:
+    if isinstance(chat_history[-1]['content'], list):
+        return chat_history[-1]['content']
     # Regular expression to extract content within "Guess: [ ... ]"
-    matches = re.findall(r"(?:Guess:\s*)?\[([^\]]+)\]", chat_history[-1]["content"])
-    if matches:
-        # Split the matched content into a list of strings
-        return [item.strip().strip("'").strip('"') for item in matches[-1].split(",")]
-    return []
+    elif isinstance(chat_history[-1]['content'], str):
+        matches = re.findall(r"(?:Guess:\s*)?\[([^\]]+)\]", chat_history[-1]["content"])
+        if matches:
+            # Split the matched content into a list of strings
+            return [item.strip().strip("'").strip('"') for item in matches[-1].split(",")]
+        else:
+            return []
+    else:
+        return []
 
 
 def colorize_code(code):
