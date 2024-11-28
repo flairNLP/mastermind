@@ -119,8 +119,8 @@ class AnthropicModel(LanguageModel):
         # so we have to fill the first message with a user message, as empty messages are not allowed
         response = self.client.messages.create(
             model=self.model_name,
-            system=chat_history[0]["content"],
-            messages=chat_history[1:],
+            system="You are a logic gamer playing a game of Mastermind. You are the codebreaker.",
+            messages=chat_history,
             max_tokens=self.generation_args.max_tokens,
             temperature=self.generation_args.temperature,
         )

@@ -21,11 +21,20 @@ class KnuthSolver(Solver):
         super().__init__(game)
         self.initial_guess = random.sample(self.game.possible_colors, k=self.game.code_length)
         self.guesses = []
-        self.all_possible_scores = self.game.compute_all_possible_scores()
+        self.all_possible_scores = self._compute_all_possible_scores(game)
         self.unused_guesses = [list(code) for code in product(self.game.possible_colors, repeat=self.game.code_length)]
         self.remaining_states = [
             list(code) for code in product(self.game.possible_colors, repeat=self.game.code_length)
         ]
+
+    def _compute_all_possible_scores(self, game: Mastermind) -> List[List[int]]:
+        all_possible_scores = [
+            (black, white)
+            for black in range(game.code_length + 1)  # `black` can range from 0 to `code_length`
+            for white in range(game.code_length - black + 1)  # `white` depends on remaining slots
+            if black + white <= game.code_length  # Total feedback must not exceed `code_length`
+        ]
+        return all_possible_scores
 
     def __call__(self, chat_history: ChatHistory) -> ChatHistory:
         current_guess = sum(["assistant" in x['role'] for x in chat_history])

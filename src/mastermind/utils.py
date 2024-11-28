@@ -1,11 +1,9 @@
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import rootutils
-
-from mastermind.models import ChatHistory
 
 COLOR_MAP = {
     "red": "\033[91m",
@@ -32,12 +30,12 @@ def make_output_path(base_path: Optional[Path] = None) -> Path:
     return output_path
 
 
-def parse_guess(chat_history: ChatHistory) -> List[str]:
-    if isinstance(chat_history[-1]['content'], list):
-        return chat_history[-1]['content']
+def parse_guess(turn: Dict[str, str]) -> List[str]:
+    if isinstance(turn['content'], list):
+        return turn['content']
     # Regular expression to extract content within "Guess: [ ... ]"
-    elif isinstance(chat_history[-1]['content'], str):
-        matches = re.findall(r"(?:Guess:\s*)?\[([^\]]+)\]", chat_history[-1]["content"])
+    elif isinstance(turn['content'], str):
+        matches = re.findall(r"(?:Guess:\s*)?\[([^\]]+)\]", turn["content"])
         if matches:
             # Split the matched content into a list of strings
             return [item.strip().strip("'").strip('"') for item in matches[-1].split(",")]
@@ -58,7 +56,6 @@ def print_summary(model, game, args, result):
         "Code Length:",
         "Number of Colors:",
         "Last Code:",
-        "Duplicates Allowed:",
         "Max Guesses:",
         "Games Played:",
         "Games Won:",
@@ -71,7 +68,6 @@ def print_summary(model, game, args, result):
     print(f"{'Code Length:'.ljust(max_label_length)} {game.code_length}")
     print(f"{'Number of Colors:'.ljust(max_label_length)} {game.num_colors}")
     print(f"{'Last Code:'.ljust(max_label_length)} {', '.join(colorize_code(game.secret_code))}")
-    print(f"{'Duplicates Allowed:'.ljust(max_label_length)} {game.duplicates_allowed}")
     print(f"{'Max Guesses:'.ljust(max_label_length)} {game.max_guesses}")
     print(f"{'Games Played:'.ljust(max_label_length)} {args.num_runs}")
     print(f"{'Games Won:'.ljust(max_label_length)} {sum(r['solved'] for r in result)}")

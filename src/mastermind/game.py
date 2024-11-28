@@ -25,29 +25,15 @@ class Mastermind:
         code_length: int = 4,
         num_colors: int = 6,
         max_guesses: int = 12,
-        duplicates_allowed: bool = True,
     ):
         self.code_length = code_length
         self.max_guesses = max_guesses
         self.num_colors = num_colors
-        self.duplicates_allowed = duplicates_allowed
         self.possible_colors: List[str] = random.sample(COLORS, k=num_colors)
         self.secret_code = self._generate_secret_code()
 
     def _generate_secret_code(self) -> List[str]:
-        if self.duplicates_allowed:
-            return random.choices(self.possible_colors, k=self.code_length)
-        else:
-            return random.sample(self.possible_colors, k=self.code_length)
-
-    def compute_all_possible_scores(self) -> List[Tuple[int, int]]:
-        all_possible_scores = [
-            (black, white)
-            for black in range(self.code_length + 1)  # `black` can range from 0 to `code_length`
-            for white in range(self.code_length - black + 1)  # `white` depends on remaining slots
-            if black + white <= self.code_length  # Total feedback must not exceed `code_length`
-        ]
-        return all_possible_scores
+        return random.sample(self.possible_colors, k=self.code_length)
 
     def evaluate_guess(self, guess: List[str], code: List[str]) -> Tuple[int, int]:
         exact_matches = sum(s == g for s, g in zip(code, guess))
@@ -70,7 +56,6 @@ class Mastermind:
         return {
             "code_length": self.code_length,
             "possible_colors": self.possible_colors,
-            "duplicates_allowed": self.duplicates_allowed,
             "secret_code": self.secret_code,
         }
 
