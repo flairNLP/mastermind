@@ -3,7 +3,7 @@ import random
 from enum import Enum, auto
 from itertools import product
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from tqdm import tqdm
 
@@ -13,7 +13,10 @@ from mastermind.solvers import Solver
 from mastermind.utils import COLOR_MAP, RESET, make_output_path, parse_guess
 
 GameResult = Dict[str, str]
-Progress = Dict[str, bool]
+Guess = List[str]
+Scores = Tuple[int, int]
+GuessHistory = List[Tuple[Guess, Scores]]
+ProgressHistory = List[int]
 
 GREEN = COLOR_MAP["green"]
 RED = COLOR_MAP["red"]
@@ -27,41 +30,73 @@ class GameState(Enum):
 
 
 class Evaluator:
-    def __init__(self, game: Mastermind, model: Union[LanguageModel, Solver], compute_progress: bool = False):
+    def __init__(
+        self,
+        game: Mastermind,
+        model: Union[LanguageModel, Solver],
+        use_cot: bool = False,
+        use_fewshot_example: bool = False,
+        compute_progress: bool = False,
+    ):
         self.game = game
         self.model = model
         self.attempts = 0
         self.state = GameState.ONGOING
+        self.use_cot = use_cot
+        self.use_fewshot_example = use_fewshot_example
         self.compute_progress = compute_progress
 
-    def _init_progress_attributes(self):
-        self.all_possible_scores = self.game.compute_all_possible_scores()
-        self.unused_guesses = [list(code) for code in product(self.game.possible_colors, repeat=self.game.code_length)]
-        self.remaining_states = [
-            list(code) for code in product(self.game.possible_colors, repeat=self.game.code_length)
-        ]
-        self.optimal_next_guesses = [
-            list(code) for code in product(self.game.possible_colors, repeat=self.game.code_length)
+    def _init_chat_history(self) -> ChatHistory:
+
+        return [
+            {"role": "user", "content": f"{self._init_instruction()}\n\n{self._guess_template()}"},
         ]
 
-    def _init_chat_history(self) -> ChatHistory:
+    def _init_instruction(self) -> str:
         task_instruction = (
             f"Your task is to solve the game of Mastermind. The game is defined as follows:\n"
             f"- You have to find out the {self.game.code_length}-color secret code.\n"
             f"- The following colors are allowed: {self.game.possible_colors}.\n"
-            f"- Duplicates are{' ' if self.game.duplicates_allowed else ' not '}allowed.\n"
+            f"- Duplicate colors in a single code are allowed.\n"
             f"- You have a total of {self.game.max_guesses} guesses.\n"
             "- After each guess, I will provide feedback on:\n"
             "  1. How many guesses are the correct color and in the correct position.\n"
             "  2. How many guesses are the correct color but in the wrong position.\n"
             "- Consider the feedback from all your guesses to find out the secret code.\n"
-            "- You can must clearly indicate your final answer by preprending 'GUESS:' to it.\n\n"
-            "### Example:\n"
-            f"What's your next guess? GUESS:{random.sample(self.game.possible_colors, k=self.game.code_length)}\n"
-            "Feedback: <number> color(s) in the correct position(s). <number> color(s) but wrong position(s).\n"
-            "###"
+            "- You can must clearly indicate your final answer by preprending 'Guess:' to it.\n\n"
+            f"{self._example_template()}"
         )
-        return [{"role": "user", "content": task_instruction}, {"role": "user", "content": "Guess: "}]
+        return task_instruction
+
+    def _guess_template(self) -> str:
+        return f"{'Before giving your next guess, analyze your next guess using all previous feedback step-by-step. ' if self.use_cot else ''}What's your next guess?"
+
+    def _example_template(self) -> str:
+        if self.use_fewshot_example:
+            example = (
+                "###"
+                "Full Game Example (Secret Code: ['white', 'green', 'red', 'brown']):\n"
+                "<User> What's your next guess?\n"
+                "<Assistant> Guess:['yellow', 'black', 'green', 'brown']\n"
+                "<User> Feedback: Correct color and position: 1. Correct color but wrong position: 1.\nWhat's your next guess?"
+                "<Assistant> Guess:['white', 'brown', 'green', 'brown']\n"
+                "<User> Feedback: Correct color and position: 2. Correct color but wrong position: 1.\nWhat's your next guess?"
+                "<Assistant> Guess:['white', 'green', 'white', 'brown']\n"
+                "<User> Feedback: Correct color and position: 3. Correct color but wrong position: 0.\nWhat's your next guess?"
+                "<Assistant> Guess:['white', 'green', 'red', 'brown']\n"
+                "<User> Feedback: Correct color and position: 4. Correct color but wrong position: 0.\nYou solved it!"
+                "###"
+            )
+        else:
+            example = (
+                "### Example:\n"
+                "<User> What's your next guess?\n"
+                f"<Assistant> Guess:{random.sample(self.game.possible_colors, k=self.game.code_length)}\n"
+                f"<User> Feedback: <number> color(s) in the correct position(s). <number> color(s) but wrong position(s).\n{self._guess_template()}\n"
+                "###"
+            )
+
+        return example
 
     def run(
         self,
@@ -72,22 +107,18 @@ class Evaluator:
     ) -> List[GameResult]:
         results = []
         for num_game in range(num_games):
-            chat_history = self._init_chat_history()
-            if compute_progress:
-                self._init_progress_attributes()
-                progress_history = []
+            chat_history: ChatHistory = self._init_chat_history()
+            guess_history: GuessHistory = []
             total_guesses_bar = tqdm(
                 total=self.game.max_guesses, desc=f"{YELLOW}[Game #{num_game}]{RESET} Attempts", unit="attempt"
             )
+
             try:
                 while self.state == GameState.ONGOING:
                     chat_history = self.model(chat_history)
-                    guess = parse_guess(chat_history)
-
+                    guess = parse_guess(chat_history[-1])
                     exact_matches, partial_matches, hint = self.game.evaluate(guess)
-                    if compute_progress:
-                        progress = self.progress(guess, exact_matches, partial_matches)
-                        progress_history.append(progress)
+                    guess_history.append((guess, (exact_matches, partial_matches)))
 
                     self.attempts += 1
                     total_guesses_bar.update(1)
@@ -103,17 +134,21 @@ class Evaluator:
                         self.state = GameState.LOST
                         total_guesses_bar.close()
                     else:
-                        chat_history.append({"role": "user", "content": f"Feedback: {hint}\nGuess: "})
+                        chat_history.append({"role": "user", "content": f"Feedback: {hint}\n{self._guess_template()}"})
+
+                if compute_progress:
+                    progress_history = self.progress(guess_history)
 
                 results.append(
                     {
                         "chat_history": chat_history,
-                        "valid": True,
+                        "guess_history": guess_history,
+                        "progress_history": progress_history,
+                        "valid": True if not self.attempts == 1 else False,  # random guesses are not valid
                         "solved": False if self.state == GameState.LOST else True,
                         "num_guesses": self.attempts,
                         "game": self.game.to_json(),
                         "model": self.model.get_model_info(),
-                        "progress_history": progress_history,
                     }
                 )
 
@@ -122,12 +157,12 @@ class Evaluator:
                 results.append(
                     {
                         "chat_history": chat_history,
+                        "guess_history": guess_history,
                         "valid": False,
                         "solved": False,
                         "num_guesses": self.attempts,
                         "game": self.game.to_json(),
                         "model": self.model.get_model_info(),
-                        "progress_history": progress_history,
                         "error": str(e),
                     }
                 )
@@ -142,33 +177,17 @@ class Evaluator:
 
         return results
 
-    def progress(self, guess: List[str], exact_matches: int, partial_matches: int) -> Progress:
-        self.unused_guesses.remove(guess)
-        is_logical_guess = guess in self.remaining_states
-        self.compute_remaining_states(guess, exact_matches, partial_matches)
-        is_optimal_guess = guess in self.optimal_next_guesses
-        self.compute_optimal_next_guesses()
-        return {"is_logical_guess": is_logical_guess, "is_optimal_guess": is_optimal_guess}
-
-    def compute_remaining_states(self, current_guess: List[str], exact_matches: int, partial_matches: int):
-        tmp = []
-        for possible_code in self.remaining_states:
-            if self.game.evaluate_guess(current_guess, possible_code) == (exact_matches, partial_matches):
-                tmp.append(possible_code)
-        self.remaining_states = tmp[:]
-
-    def compute_optimal_next_guesses(self):
-        minimax_scores = []
-        for item in self.unused_guesses:
-            hit_count = [0] * len(self.all_possible_scores)
-            for possible_code in self.remaining_states:
-                hit_count[self.all_possible_scores.index(self.game.evaluate_guess(possible_code, item))] += 1
-            minimax_scores.append(len(self.remaining_states) - max(hit_count))
-
-        max_score = max(minimax_scores)
-        indices = [i for i, x in enumerate(minimax_scores) if x == max_score]
-        optimal_next_guesses = [self.unused_guesses[i] for i in indices]
-        self.optimal_next_guesses = optimal_next_guesses
+    def progress(self, guess_history: GuessHistory) -> ProgressHistory:
+        all_codes = list(product(self.game.possible_colors, repeat=self.game.code_length))
+        progress_history = [len(all_codes)]
+        for i in range(1, len(guess_history)):
+            guesses = guess_history[:i]
+            remaining_states = []
+            for possible_code in all_codes:
+                if all(self.game.evaluate_guess(guess, possible_code) == feedback for guess, feedback in guesses):
+                    remaining_states.append(possible_code)
+            progress_history.append(len(remaining_states))
+        return progress_history
 
     def reset(self):
         self.game.reset()
