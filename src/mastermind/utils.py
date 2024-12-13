@@ -35,7 +35,7 @@ def parse_guess(turn: Dict[str, str]) -> List[str]:
         return turn['content']
     # Regular expression to extract content within "Guess: [ ... ]"
     elif isinstance(turn['content'], str):
-        matches = re.findall(r"(?:Guess:\s*)?\[([^\]]+)\]", turn["content"])
+        matches = re.findall(r"(?:FINAL GUESS:\s*)?\[([^\]]+)\]", turn["content"])
         if matches:
             # Split the matched content into a list of strings
             return [item.strip().strip("'").strip('"') for item in matches[-1].split(",")]
