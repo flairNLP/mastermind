@@ -4,6 +4,8 @@
 
 Evaluating Reasoning Capabilities of LLMs Using the Mastermind Board Game.
 
+![Game Overview](mastermind.png)
+
 [Installation](#🚀-installation) | [Evaluation Paradigms](#🏆-evaluation-paradigms) | [Basic Concepts](#🔑-basic-concepts) | [Running the Evaluations](#running-the-evaluations) |
 [Citation](#📚-citation)
 
