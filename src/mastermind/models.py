@@ -1,20 +1,19 @@
 import os
-import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 from lmformatenforcer import RegexParser
 from lmformatenforcer.integrations.transformers import build_transformers_prefix_allowed_tokens_fn
-from transformers import AutoModelForCausalLM, AutoTokenizer, LogitsProcessor, LogitsProcessorList, pipeline
+from transformers import pipeline
 
 ChatHistory = List[Dict[str, str]]
 
 
 @dataclass
 class GenerationArgs:
-    max_tokens: int = 1024
-    temperature: float = 0.7
+    max_tokens: int = 2048
+    temperature: float = 0.9
 
     def __getitem__(self, key):
         return getattr(self, key)
@@ -47,24 +46,24 @@ class HFModel(LanguageModel):
         model_name: str,
         device: str = "cuda",
         generation_args: Optional[GenerationArgs] = None,
-        regex_constrained=True,
+        regex_constrained=False,
         **kwargs,
     ):
         self.model_name = model_name
         self.regex_constrained = regex_constrained
-        self.game_regex = r"Guess: \[(red|blue|green|yellow|orange|purple|pink|brown|black|white)(,\s*(red|blue|green|yellow|orange|purple|pink|brown|black|white))*\]"
 
-        self.pipe = pipeline("text-generation", model=model_name, device=device, **kwargs)
+        self.pipe = pipeline("text-generation", model=model_name, trust_remote_code=True, device=device, **kwargs)
         if self.regex_constrained:
+            self.game_regex = r"Guess: \[(red|blue|green|yellow|orange|purple|pink|brown|black|white)(,\s*(red|blue|green|yellow|orange|purple|pink|brown|black|white))*\]"
             parser = RegexParser(self.game_regex)
             self.prefix_function = build_transformers_prefix_allowed_tokens_fn(self.pipe.tokenizer, parser)
-        self.generation_args = generation_args or GenerationArgs()
+        self.generation_args = generation_args or GenerationArgs().hf_format()
 
     def __call__(self, chat_history: ChatHistory, **kwargs) -> ChatHistory:
         return self.pipe(
             chat_history,
             prefix_allowed_tokens_fn=None if not self.regex_constrained else self.prefix_function,
-            **self.generation_args.hf_format(),
+            **self.generation_args,
             **kwargs,
         )[0]["generated_text"]
 
@@ -82,14 +81,11 @@ class OpenAIModel(LanguageModel):
 
         self.model_name = model_name
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        self.generation_args = generation_args or GenerationArgs()
 
     def __call__(self, chat_history: ChatHistory) -> ChatHistory:
         response = self.client.chat.completions.create(
             model=self.model_name,
             messages=chat_history,
-            temperature=self.generation_args.temperature,
-            max_tokens=self.generation_args.max_tokens,
         )
 
         chat_history.append({"content": response.choices[0].message.content, "role": "assistant"})
@@ -119,7 +115,7 @@ class AnthropicModel(LanguageModel):
         # so we have to fill the first message with a user message, as empty messages are not allowed
         response = self.client.messages.create(
             model=self.model_name,
-            system="You are a logic gamer playing a game of Mastermind. You are the codebreaker.",
+            system="You are the codebreaker in a game of Mastermind. Find out the secret code based on the instructions given by the user.",
             messages=chat_history,
             max_tokens=self.generation_args.max_tokens,
             temperature=self.generation_args.temperature,

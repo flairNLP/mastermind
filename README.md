@@ -1,40 +1,79 @@
-# Mastermind
+<div align="center">
 
-## Setup
+# MastermindEval
 
-```
+Evaluating Reasoning Capabilities of LLMs Using the Mastermind Board Game.
+
+[Installation](#🚀-installation) | [Evaluation Paradigms](#🏆-evaluation-paradigms) | [Basic Concepts](#🔑-basic-concepts) | [Running the Evaluations](#running-the-evaluations) |
+[Citation](#📚-citation)
+
+</div>
+
+## 🚀 Installation 
+
+To set up the environment and install dependencies, run the following:
+
+```bash
 conda create -n mastermind python=3.11
 conda activate mastermind
 pip install -e .
 ```
 
-## Run
+## 🏆 Evaluation Paradigms
 
-Using Language Models.
+We provide three different evaluation paradigms:
+
+1. **🤖 Agentic Evaluation**: The model actively plays Mastermind, interacting with the game environment.
+2. **📝 Prompt-Based Evaluation**: The model is presented with pre-played game scenarios and must deduce the last possible code.
+3. **🎯 Multiple-Choice Evaluation**: The model ranks different code options based on log-likelihood, aligning with pretraining objectives. We will integrate this option into the [lm-eval-harness](https://github.com/EleutherAI/lm-evaluation-harness) library soon.
+
+## 🔑 Basic Concepts
+
+- **🧩 Model Class**: Defines the LLM interface that interacts with the game. We provide support for:
+  - Hugging Face Model Hub
+  - OpenAI
+  - Anthropic
+- **🎲 Mastermind Game Class**: Represents a game instance with customizable parameters such as `num_colors` and `possible_colors`.
+- **📊 Evaluator Class**: Manages the evaluation process by executing multiple rounds of the game and assessing model performance.
+
+## Running the Evaluations
+
+We provide various scripts for running different evaluation methods:
+
+- **🤖 Agentic Evaluation**: `run_full_game.py` (Python script) and `run_full_game.sh` (Bash script)
+- **📝 Prompt-Based Evaluation**: `run_instructions.py` (Python) and `run_instructions.sh` (Bash)
+- **🎯 Multiple-Choice Evaluation**: `run_multiple_choice.sh` (Bash) – relies on `lm-eval-harness` (pending official dataset merge, see PR)
+
+### Example Usage
+
+Below is a conceptual overview of running an evaluation using a Hugging Face model:
 
 ```python
-from mastermind.models import AnthropicModel, HFModel, OpenAIModel
+from mastermind.evaluator import Evaluator
 from mastermind.game import Mastermind
-from mastermind.evalutor import Evalutor
-from mastermind.solvers import KnuthSolver
+from mastermind.models import HFModel
+from mastermind.utils import print_summary
 
-game = Mastermind()
-model = HFModel("Qwen/Qwen2-1.5B-Instruct", generation_args={"max_new_tokens": 1024})
-# model = OpenAIModel()
-# model = AnthropicModel()
-evalutor = Evaluator(game, model)
-result = evalutor.run(num_games=2, save_results=True)
+# Load the model
+model = HFModel(model_name='deepseek-ai/DeepSeek-R1-Distill-Qwen-7B')
+
+# Initialize the game environment
+game = Mastermind(code_length=4, num_colors=6)
+
+# Create the evaluator
+evaluator = Evaluator(game, model, use_cot=True, use_fewshot_example=True)
+
+# Run the evaluation
+result = evaluator.run(num_games=100, save_results=True, save_path="results", compute_progress=True)
+
+# Display summary
+print_summary(model, game, result, num_runs=100)
 ```
 
-Using Solvers.
-```python
-    game = Mastermind()
-    solver = KnuthSolver(game=game)
-    evaluator = Evaluator(game=game, model=solver)
-    evaluator.run(num_games=2, save_results=True)
-```
+---
 
-If you want to track progress of guesses:
-```python
-    evaluator.run(num_games=2, save_results=True, compute_progress=True)
-```
+## 📚 Citation
+
+Coming soon.
+
+For any issues, feel free to open an issue or contribute to the repository! 🚀

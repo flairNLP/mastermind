@@ -11,7 +11,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--model", type=str, default="gpt2", help="Model name.")
     parser.add_argument("--model_type", type=str, default="hf", help="Model type.")
-    parser.add_argument("--generation_kwargs", type=str, default={}, help="Generation kwargs.")
+    parser.add_argument("--generation_args", type=str, default={}, help="Generation kwargs.")
     parser.add_argument("--use_cot", action="store_true", help="Use COT.")
     parser.add_argument("--use_full_example", action="store_true", help="Use full example.")
     parser.add_argument("--code_length", type=int, default=4, help="Code length of the game.")
@@ -21,17 +21,19 @@ if __name__ == "__main__":
     parser.add_argument("--save_path", type=str, default=None, help="Path to save results.")
     args = parser.parse_args()
 
-    if args.generation_kwargs:
-        generation_kwargs = json.loads(args.generation_kwargs)  # Convert JSON string to a dictionary
+    if args.generation_args:
+        generation_args = json.loads(args.generation_args)  # Convert JSON string to a dictionary
+    else:
+        generation_args = None
 
     game = Mastermind(code_length=args.code_length, num_colors=args.num_colors)
 
     if args.model_type == "hf":
-        model = HFModel(model_name=args.model, device="mps")
+        model = HFModel(model_name=args.model, generation_args=generation_args)
     elif args.model_type == "openai":
-        model = OpenAIModel(model_name=args.model)
+        model = OpenAIModel(model_name=args.model, generation_args=generation_args)
     elif args.model_type == "anthropic":
-        model = AnthropicModel(model_name=args.model)
+        model = AnthropicModel(model_name=args.model, generation_args=generation_args)
     elif args.model_type == "knuth":
         model = KnuthSolver(game)
 
@@ -39,4 +41,4 @@ if __name__ == "__main__":
     result = evaluator.run(
         num_games=args.num_runs, save_results=args.save_results, save_path=args.save_path, compute_progress=True
     )
-    print_summary(model, game, args, result)
+    print_summary(model, game, result, args.num_runs)
