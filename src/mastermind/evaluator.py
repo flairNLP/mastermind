@@ -53,22 +53,19 @@ class Evaluator:
 
     def _init_instruction(self) -> str:
         task_instruction = (
-            f"Your task is to solve the game of Mastermind. The game is defined as follows:\n"
-            f"- You have to find out the {self.game.code_length}-color secret code.\n"
+            f"Your goal is to guess the secret color code like in the game of Mastermind. The game is defined as follows:\n"
+            f"- The code consists out of {self.game.code_length} colors , and duplicates are allowed.\n"
             f"- The following colors are allowed: {self.game.possible_colors}.\n"
-            f"- Duplicate colors in a single code are allowed.\n"
             f"- You have a total of {self.game.max_guesses} guesses.\n"
-            "- After each guess, I will provide feedback on:\n"
-            "  1. How many guesses are the correct color and in the correct position.\n"
-            "  2. How many guesses are the correct color but in the wrong position.\n"
-            "- Consider the feedback from all your guesses to find out the secret code.\n"
-            "- You can must clearly indicate your final answer by preprending 'FINAL GUESS:' to it.\n\n"
+            "- After each guess, you will receive feedback based on the following rules:"
+            "1. You will be told how many pegs are the correct color **and** in the correct position.\n"
+            "2. You will be told how many pegs are the correct color **but** in the wrong position.\n"
+            "- A color in the guess will only be counted once, prioritizing exact matches before partial ones.\n"
+            "- Use the feedback from all your guesses to logically deduce the secret code.\n"
+            "- Once you are ready to make a guess, let me know what code is your guess by prepending 'FINAL GUESS:' to it."
             f"{self._example_template()}"
         )
         return task_instruction
-
-    def _guess_template(self) -> str:
-        return f"{'Before giving your next guess, analyze your next guess using all previous feedback step-by-step. ' if self.use_cot else ''}What's your next guess?"
 
     def _example_template(self) -> str:
         if self.use_fewshot_example:
@@ -88,14 +85,16 @@ class Evaluator:
             )
         else:
             example = (
-                "### Example:\n"
+                "### Example interaction:\n"
                 "<User> What's your next guess?\n"
                 f"<Assistant> FINAL GUESS:{random.sample(self.game.possible_colors, k=self.game.code_length)}\n"
-                f"<User> Feedback: <number> color(s) in the correct position(s). <number> color(s) but wrong position(s).\n{self._guess_template()}\n"
+                f"<User> Feedback: <number> color(s) in the correct position(s). <number> color(s) but wrong position(s). {self._guess_template()}\n"
                 "###"
             )
-
         return example
+
+    def _guess_template(self) -> str:
+        return f"{'Before giving your next guess, analyze your next guess using all previous feedback step-by-step. ' if self.use_cot else ''}What's your next guess?"
 
     def run(
         self,
@@ -104,6 +103,7 @@ class Evaluator:
         save_path: Optional[Path] = None,
         compute_progress: bool = False,
     ) -> List[GameResult]:
+
         results = []
         for num_game in range(num_games):
             chat_history: ChatHistory = self._init_chat_history()
@@ -152,8 +152,20 @@ class Evaluator:
                 if save_results:
                     if save_path is None:
                         save_path = make_output_path()
+
                     with open(save_path / "results.jsonl", "a") as f:
                         f.write(json.dumps(result) + "\n")
+
+                    with open(save_path / "info.json", "w") as f:
+                        json.dump(
+                            {
+                                "model": self.model.get_model_info(),
+                                'game_type': "full_game",
+                                'code_length': self.game.code_length,
+                                'num_colors': len(self.game.possible_colors),
+                            },
+                            f,
+                        )
 
             except Exception as e:
                 print(f"Error occurred: {e}")

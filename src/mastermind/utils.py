@@ -20,12 +20,15 @@ COLOR_MAP = {
 RESET = "\033[0m"
 
 
-def make_output_path(base_path: Optional[Path] = None) -> Path:
+def make_output_path(base_path: Optional[Path] = None, game_type: Optional[str] = None) -> Path:
     if not base_path:
         base_path = rootutils.find_root(search_from=__file__, indicator=".project-root")
 
     current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    output_path = Path(base_path / f"results/{current_datetime}")
+    if game_type:
+        output_path = Path(base_path / f"results/{game_type}/{current_datetime}")
+    else:
+        output_path = Path(base_path / f"results/full_game/{current_datetime}")
     output_path.mkdir(parents=True)
     return output_path
 
@@ -49,7 +52,7 @@ def colorize_code(code):
     return [f"{COLOR_MAP.get(color, '')}{color}{RESET}" for color in code]
 
 
-def print_summary(model, game, args, result):
+def print_summary(model, game, result, num_runs):
     # Calculate padding for alignment
     labels = [
         "Model:",
@@ -69,5 +72,5 @@ def print_summary(model, game, args, result):
     print(f"{'Number of Colors:'.ljust(max_label_length)} {game.num_colors}")
     print(f"{'Last Code:'.ljust(max_label_length)} {', '.join(colorize_code(game.secret_code))}")
     print(f"{'Max Guesses:'.ljust(max_label_length)} {game.max_guesses}")
-    print(f"{'Games Played:'.ljust(max_label_length)} {args.num_runs}")
+    print(f"{'Games Played:'.ljust(max_label_length)} {num_runs}")
     print(f"{'Games Won:'.ljust(max_label_length)} {sum(r['solved'] for r in result)}")

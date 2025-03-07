@@ -41,4 +41,4 @@ if __name__ == "__main__":
     result = evaluator.run(
         num_games=args.num_runs, save_results=args.save_results, save_path=args.save_path, compute_progress=True
     )
-    print_summary(model, game, args, result)
+    print_summary(model, game, result, args.num_runs)
