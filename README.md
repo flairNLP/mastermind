@@ -41,8 +41,8 @@ We provide three different evaluation paradigms:
 We provide various scripts for running different evaluation methods:
 
 - **🤖 Agentic Evaluation**: `run_full_game.py` (Python script) and `run_full_game.sh` (Bash script)
-- **📝 Prompt-Based Evaluation**: `run_instructions.py` (Python) and `run_instructions.sh` (Bash)
-- **🎯 Multiple-Choice Evaluation**: `run_multiple_choice.sh` (Bash) – relies on `lm-eval-harness` (pending official dataset merge, see PR)
+- **📝 Prompt-Based Evaluation**: `run_instructions.py` (Python script) and `run_instructions.sh` (Bash script) - These splits are also availabe on the 🤗 [Hugging Face hub](https://huggingface.co/collections/flair/mastermindeval-67cb01daedbee142edd594ea)!
+- **🎯 Multiple-Choice Evaluation**: `run_multiple_choice.sh` (Bash) – relies on `lm-eval-harness` (pending) - These splits are also availabe on the 🤗 [Hugging Face hub](https://huggingface.co/collections/flair/mastermindeval-67cb01daedbee142edd594ea)!
 
 ### Example Usage
 
