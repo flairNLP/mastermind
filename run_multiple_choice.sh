@@ -10,17 +10,6 @@ if [ "$#" -lt 1 ]; then
     exit 1
 fi
 
-# Dataset path
-# Loop through all provided flags
-datasets=(
-    "mastermind_24_random"
-    "mastermind_35_random"
-    "mastermind_46_random"
-    "mastermind_24_close"
-    "mastermind_35_close"
-    "mastermind_46_close"
-)
-
 for flag in "$@"; do
     case $flag in
         hf)
@@ -40,7 +29,7 @@ for flag in "$@"; do
                 model_path="${model##*/}"
                 for dataset in "${datasets[@]}"; do
                     echo "Running script for HF model: $model"
-                    lm-eval --model hf --model_args "pretrained=$model" --tasks "$dataset" --output_path "results/eval_harness"
+                    lm-eval --model hf --model_args "pretrained=$model" --tasks "mastermind" --output_path "results/eval_harness"
                 done
             done
             ;;
