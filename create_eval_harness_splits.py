@@ -43,7 +43,7 @@ def instruction_template(code_length: int, possible_colors: list, formatted_gues
         f"Your goal is to find the secret {p.number_to_words(code_length)}-color code. The following colors are possible: {', '.join(possible_colors)}.\n"
         f"Some guesses have already been made. I will provide feedback for each guess made with which it is possible to unambigiously determine the secret code.\n\n"
         f"Previous Guesses:\n"
-        f"{formatted_guesses}" + "\n\n"
+        f"{formatted_guesses}"
     )
     return instruction
 
