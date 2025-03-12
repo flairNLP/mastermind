@@ -17,7 +17,7 @@ def format_guesses_detail(guesses):
     for guess, score in guesses:
         if score == [0, 0]:
             formatted_guesses.append(
-                f"Guess: {guess}. Hint: None of the guessed colors are present in the secret code."
+                f"Guess: {guess}. Hint: none of the guessed colors are present in the secret code."
             )
         elif score[0] > 0 and score[1] == 0:
             formatted_guesses.append(
@@ -25,12 +25,12 @@ def format_guesses_detail(guesses):
             )
         elif score[0] == 0 and score[1] > 0:
             formatted_guesses.append(
-                f"Guess: {guess}. Hint: {p.number_to_words(score[1])} color{'s occur' if score[1] > 1 else ' occurs'} in the secret code but {'are' if score[0] > 1 else 'is'} the wrong position{'s' if score[0] > 1 else ''}."
+                f"Guess: {guess}. Hint: {p.number_to_words(score[1])} color{'s are' if score[1] > 1 else ' is'} in the secret code but in the wrong position{'s' if score[1] > 1 else ''}."
             )
         elif score[0] > 0 and score[1] > 0:
             formatted_guesses.append(
                 f"Guess: {guess}. Hint: {p.number_to_words(score[0])} color{'s are' if score[0] > 1 else ' is'} in the correct position{'s' if score[0] > 1 else ''} "
-                f"and {p.number_to_words(score[1])} color{'s occur' if score[1] > 1 else ' occurs'} in the secret code but {'are' if score[0] > 1 else 'is'} the wrong position{'s' if score[0] > 1 else ''}."
+                f"and {p.number_to_words(score[1])} color{'s are' if score[1] > 1 else ' is'} in the secret code but in the wrong position{'s' if score[0] > 1 else ''}."
             )
         else:
             raise ValueError(f"Invalid feedback scores: {score}")
@@ -116,11 +116,6 @@ def prepare_shuffled_output(secret, options):
 
 
 def make_eval_harness(path: str):
-    if os.path.exists(f"{path}/mastermind_eval_harness.json"):
-        with open(f"{path}/mastermind_eval_harness.json") as f:
-            dataset = json.load(f)
-        return dataset
-
     with open(f"{path}/raw.json") as f:
         data = json.load(f)
 
@@ -185,11 +180,11 @@ if __name__ == "__main__":
         easy_train_val = easy_train_test["train"].train_test_split(test_size=0.1, seed=42)
         easy_train_val["validation"] = easy_train_val.pop("test")
         easy_train_val["test"] = easy_train_test["test"]
-        easy_train_val.push_to_hub(f"mastermind_{setting}_random")
+        easy_train_val.push_to_hub(f"flair/mastermind_{setting}_mcq_random")
 
         dataset_difficult = Dataset.from_dict(dataset_difficult)
         difficult_train_test = dataset_difficult.train_test_split(test_size=0.05, seed=42)
         difficult_train_val = difficult_train_test["train"].train_test_split(test_size=0.1, seed=42)
         difficult_train_val["validation"] = difficult_train_val.pop("test")
         difficult_train_val["test"] = difficult_train_test["test"]
-        difficult_train_val.push_to_hub(f"mastermind_{setting}_close")
+        difficult_train_val.push_to_hub(f"flair/mastermind_{setting}_mcq_close")
