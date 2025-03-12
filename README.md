@@ -76,6 +76,15 @@ print_summary(model, game, result, num_runs=100)
 
 ## 📚 Citation
 
-Coming soon.
+```
+@inproceedings{
+  golde2025mastermindeval,
+  title={MastermindEval: A Simple But Scalable Reasoning Benchmark},
+  author={Jonas Golde and Patrick Haller and Fabio Barth and Alan Akbik},
+  booktitle={Workshop on Reasoning and Planning for Large Language Models},
+  year={2025},
+  url={https://openreview.net/forum?id=H4donosutm}
+}
+```
 
 For any issues, feel free to open an issue or contribute to the repository! 🚀
