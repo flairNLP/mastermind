@@ -27,7 +27,7 @@ We provide three different evaluation paradigms:
 
 1. **🤖 Agentic Evaluation**: The model actively plays Mastermind, interacting with the game environment.
 2. **📝 Prompt-Based Evaluation**: The model is presented with pre-played game scenarios and must deduce the last possible code.
-3. **🎯 Multiple-Choice Evaluation**: The model ranks different code options based on log-likelihood, aligning with pretraining objectives. We opened a PR to integrate our datasets into [lm-eval-harness](https://github.com/EleutherAI/lm-evaluation-harness) - see PR [#2788](https://github.com/EleutherAI/lm-evaluation-harness/pull/2788).
+3. **🎯 Multiple-Choice Evaluation**: The model ranks different code options based on log-likelihood, aligning with pretraining objectives. You can run your evaluation using the awesome [lm-eval-harness](https://github.com/EleutherAI/lm-evaluation-harness).
 ## 🔑 Basic Concepts
 
 - **🧩 Model Class**: Defines the LLM interface that interacts with the game. We provide support for:
@@ -43,7 +43,7 @@ We provide various scripts for running different evaluation methods:
 
 - **🤖 Agentic Evaluation**: `run_full_game.py` (Python script) and `run_full_game.sh` (Bash script)
 - **📝 Prompt-Based Evaluation**: `run_instructions.py` (Python script) and `run_instructions.sh` (Bash script) - These splits are also availabe on the 🤗 [Hugging Face hub](https://huggingface.co/collections/flair/mastermindeval-67cb01daedbee142edd594ea)!
-- **🎯 Multiple-Choice Evaluation**: `run_multiple_choice.sh` (Bash) – relies on `lm-eval-harness` (see also PR [#2788](https://github.com/EleutherAI/lm-evaluation-harness/pull/2788)) - These splits are also availabe on the 🤗 [Hugging Face hub](https://huggingface.co/collections/flair/mastermindeval-67cb01daedbee142edd594ea)!
+- **🎯 Multiple-Choice Evaluation**: `run_multiple_choice.sh` (Bash) – relies on `lm-eval-harness`. These splits are also availabe on the 🤗 [Hugging Face hub](https://huggingface.co/collections/flair/mastermindeval-67cb01daedbee142edd594ea)!
 
 ### Example Usage
 
