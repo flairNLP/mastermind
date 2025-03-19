@@ -37,7 +37,7 @@ packages = ["mastermind"]
 package-dir = { "" = "src" }
 
 [tool.black]
-target-version = ["py38"]
+target-version = ["py311"]
 line-length = 120
 skip-string-normalization = true
 
