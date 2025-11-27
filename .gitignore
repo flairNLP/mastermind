@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+# ignore workspace file
+*.code-workspace
+
 # Distribution / packaging
 .Python
 build/
