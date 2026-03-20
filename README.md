@@ -16,9 +16,9 @@ Evaluating Reasoning Capabilities of LLMs Using the Mastermind Board Game.
 To set up the environment and install dependencies, run the following:
 
 ```bash
-conda create -n mastermind python=3.11
-conda activate mastermind
-pip install -e .
+uv venv --python 3.12
+source .venv/bin/activate
+uv sync
 ```
 
 ## 🏆 Evaluation Paradigms
@@ -34,6 +34,7 @@ We provide three different evaluation paradigms:
   - Hugging Face Model Hub
   - OpenAI
   - Anthropic
+  - vLLM via its OpenAI-compatible server
 - **🎲 Mastermind Game Class**: Represents a game instance with customizable parameters such as `num_colors` and `possible_colors`.
 - **📊 Evaluator Class**: Manages the evaluation process by executing multiple rounds of the game and assessing model performance.
 
@@ -69,6 +70,13 @@ result = evaluator.run(num_games=100, save_results=True, save_path="results", co
 
 # Display summary
 print_summary(model, game, result, num_runs=100)
+```
+
+To use a locally served `vLLM` model instead, start the server separately and point the CLI at it:
+
+```bash
+vllm serve Qwen/Qwen2.5-7B-Instruct --dtype auto
+python run_full_game.py --model_type vllm --model Qwen/Qwen2.5-7B-Instruct --base_url http://127.0.0.1:8000/v1
 ```
 
 ---

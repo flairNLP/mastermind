@@ -10,7 +10,7 @@ from tqdm import tqdm
 from mastermind.game import Mastermind
 from mastermind.models import ChatHistory, LanguageModel
 from mastermind.solvers import Solver
-from mastermind.utils import COLOR_MAP, RESET, make_output_path, parse_guess
+from mastermind.utils import COLOR_MAP, RESET, make_output_file_paths, parse_guess
 
 GameResult = Dict[str, str]
 Guess = List[str]
@@ -105,9 +105,17 @@ class Evaluator:
     ) -> List[GameResult]:
 
         results = []
+        results_file = None
+        summary_file = None
+        run_timestamp = None
+        if save_results:
+            results_file, summary_file = make_output_file_paths(save_path, prefix="full_game")
+            run_timestamp = results_file.stem.removeprefix("full_game_")
+
         for num_game in range(num_games):
             chat_history: ChatHistory = self._init_chat_history()
             guess_history: GuessHistory = []
+            turn_history = []
             total_guesses_bar = tqdm(
                 total=self.game.max_guesses, desc=f"{YELLOW}[Game #{num_game}]{RESET} Attempts", unit="attempt"
             )
@@ -118,6 +126,16 @@ class Evaluator:
                     guess = parse_guess(chat_history[-1])
                     exact_matches, partial_matches, hint = self.game.evaluate(guess)
                     guess_history.append((guess, (exact_matches, partial_matches)))
+                    turn_history.append(
+                        {
+                            "attempt": self.attempts + 1,
+                            "guess": guess,
+                            "exact_matches": exact_matches,
+                            "partial_matches": partial_matches,
+                            "feedback": hint,
+                            "assistant_message": chat_history[-1]["content"],
+                        }
+                    )
 
                     self.attempts += 1
                     total_guesses_bar.update(1)
@@ -135,11 +153,15 @@ class Evaluator:
                     else:
                         chat_history.append({"role": "user", "content": f"Feedback: {hint}\n{self._guess_template()}"})
 
+                progress_history = []
                 if compute_progress:
                     progress_history = self.progress(guess_history)
 
                 result = {
+                    "run_timestamp": run_timestamp,
+                    "game_index": num_game,
                     "chat_history": chat_history,
+                    "turn_history": turn_history,
                     "guess_history": guess_history,
                     "progress_history": progress_history,
                     "valid": True if not self.attempts == 1 else False,  # random guesses are not valid
@@ -148,21 +170,25 @@ class Evaluator:
                     "game": self.game.to_json(),
                     "model": self.model.get_model_info(),
                 }
+                results.append(result)
 
                 if save_results:
-                    if save_path is None:
-                        save_path = make_output_path()
-
-                    with open(save_path / "results.jsonl", "a") as f:
+                    with open(results_file, "a") as f:
                         f.write(json.dumps(result) + "\n")
 
-                    with open(save_path / "info.json", "w") as f:
+                    with open(summary_file, "w") as f:
                         json.dump(
                             {
+                                "run_timestamp": run_timestamp,
                                 "model": self.model.get_model_info(),
-                                'game_type': "full_game",
-                                'code_length': self.game.code_length,
-                                'num_colors': len(self.game.possible_colors),
+                                "game_type": "full_game",
+                                "code_length": self.game.code_length,
+                                "num_colors": len(self.game.possible_colors),
+                                "num_games_requested": num_games,
+                                "num_games_completed": len(results),
+                                "games_solved": sum(game_result["solved"] for game_result in results),
+                                "save_results": True,
+                                "results_file": str(results_file),
                             },
                             f,
                         )

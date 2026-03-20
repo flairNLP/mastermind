@@ -18,8 +18,6 @@ declare -a tuples=(
     "3 5"
     "4 6"
     "5 7"
-    "6 8"
-    "7 9"
 )
 
 
@@ -29,15 +27,7 @@ for flag in "$@"; do
         hf)
             echo "Executing tasks for Hugging Face..."
             hf_models=(
-                "Qwen/Qwen2-1.5B-Instruct"
-                "Qwen/Qwen2.5-3B-Instruct"
-                "Qwen/Qwen2.5-7B-Instruct"
-                "meta-llama/Llama-3.2-3B-Instruct"
-                "meta-llama/Llama-3.1-8B-Instruct"
-                "microsoft/Phi-3.5-mini-instruct"
-                "microsoft/phi-4"
-                'deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B'
-                "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B"
+                "Qwen/Qwen3-4B"
             )
 
             for i in "${!hf_models[@]}"; do
@@ -51,9 +41,11 @@ for flag in "$@"; do
                     python run_full_game.py \
                         --model "$model" \
                         --model_type "hf" \
+                        --enable_thinking false \
                         --code_length "$code_length" \
                         --num_colors "$num_colors" \
                         --num_runs 100 \
+                        --save_path "results/full_game" \
                         --save_results
                 done
             done
@@ -78,6 +70,7 @@ for flag in "$@"; do
                         --code_length "$code_length" \
                         --num_colors "$num_colors" \
                         --num_runs 100 \
+                        --save_path "results/full_game" \
                         --save_results
                 done
             done
@@ -101,6 +94,7 @@ for flag in "$@"; do
                         --code_length "$code_length" \
                         --num_colors "$num_colors" \
                         --num_runs 100 \
+                        --save_path "results/full_game" \
                         --save_results
                 done
             done

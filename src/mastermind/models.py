@@ -3,9 +3,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
-from lmformatenforcer import RegexParser
-from lmformatenforcer.integrations.transformers import build_transformers_prefix_allowed_tokens_fn
-from transformers import pipeline
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 ChatHistory = List[Dict[str, str]]
 
@@ -46,26 +45,67 @@ class HFModel(LanguageModel):
         model_name: str,
         device: str = "cuda",
         generation_args: Optional[GenerationArgs] = None,
-        regex_constrained=False,
+        enable_thinking: Optional[bool] = None,
         **kwargs,
     ):
         self.model_name = model_name
-        self.regex_constrained = regex_constrained
+        self.enable_thinking = enable_thinking
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+        if self.tokenizer.pad_token_id is None and self.tokenizer.eos_token_id is not None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        self.pipe = pipeline("text-generation", model=model_name, trust_remote_code=True, device=device, **kwargs)
-        if self.regex_constrained:
-            self.game_regex = r"Guess: \[(red|blue|green|yellow|orange|purple|pink|brown|black|white)(,\s*(red|blue|green|yellow|orange|purple|pink|brown|black|white))*\]"
-            parser = RegexParser(self.game_regex)
-            self.prefix_function = build_transformers_prefix_allowed_tokens_fn(self.pipe.tokenizer, parser)
+        if "torch_dtype" not in kwargs and device.startswith("cuda") and torch.cuda.is_available():
+            kwargs["torch_dtype"] = torch.bfloat16
+
+        self.model = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True, **kwargs)
+        if "device_map" not in kwargs:
+            self.model = self.model.to(device)
+        self.model.eval()
         self.generation_args = generation_args or GenerationArgs().hf_format()
 
     def __call__(self, chat_history: ChatHistory, **kwargs) -> ChatHistory:
-        return self.pipe(
-            chat_history,
-            prefix_allowed_tokens_fn=None if not self.regex_constrained else self.prefix_function,
-            **self.generation_args,
-            **kwargs,
-        )[0]["generated_text"]
+        model_inputs = self._prepare_inputs(chat_history)
+        generation_args = {**self.generation_args, **kwargs}
+        if "do_sample" not in generation_args and "temperature" in generation_args:
+            generation_args["do_sample"] = generation_args["temperature"] > 0
+        if self.tokenizer.eos_token_id is not None:
+            generation_args.setdefault("pad_token_id", self.tokenizer.eos_token_id)
+
+        with torch.inference_mode():
+            outputs = self.model.generate(**model_inputs, **generation_args)
+
+        input_length = model_inputs["input_ids"].shape[-1]
+        generated_tokens = outputs[0][input_length:]
+        generated_text = self.tokenizer.decode(generated_tokens, skip_special_tokens=True).strip()
+        chat_history.append({"role": "assistant", "content": generated_text})
+        return chat_history
+
+    def _prepare_inputs(self, chat_history: ChatHistory) -> Dict[str, torch.Tensor]:
+        if hasattr(self.tokenizer, "apply_chat_template") and self.tokenizer.chat_template:
+            template_kwargs = {}
+            if self.enable_thinking is not None:
+                template_kwargs["enable_thinking"] = self.enable_thinking
+            model_inputs = self.tokenizer.apply_chat_template(
+                chat_history,
+                tokenize=True,
+                add_generation_prompt=True,
+                return_dict=True,
+                return_tensors="pt",
+                **template_kwargs,
+            )
+        else:
+            rendered_history = self._render_chat_history(chat_history)
+            model_inputs = self.tokenizer(rendered_history, return_tensors="pt")
+
+        return {key: value.to(self.model.device) for key, value in model_inputs.items()}
+
+    def _render_chat_history(self, chat_history: ChatHistory) -> str:
+        rendered_turns = []
+        for turn in chat_history:
+            role = turn["role"].capitalize()
+            rendered_turns.append(f"{role}: {turn['content']}")
+        rendered_turns.append("Assistant:")
+        return "\n".join(rendered_turns)
 
     def get_model_info(self) -> str:
         return f"HF Model: {self.model_name}"
@@ -94,6 +134,42 @@ class OpenAIModel(LanguageModel):
 
     def get_model_info(self) -> str:
         return f"OpenAI Model: {self.model_name}"
+
+
+class VLLMModel(LanguageModel):
+    def __init__(
+        self,
+        model_name: str,
+        generation_args: Optional[GenerationArgs] = None,
+        base_url: Optional[str] = None,
+        api_key: Optional[str] = None,
+    ):
+        try:
+            from openai import OpenAI
+        except ImportError:
+            raise ImportError("Please install the openai package with 'pip install openai'")
+
+        self.model_name = model_name
+        self.base_url = base_url or os.getenv("VLLM_BASE_URL", "http://127.0.0.1:8000/v1")
+        self.client = OpenAI(
+            api_key=api_key or os.getenv("VLLM_API_KEY", "EMPTY"),
+            base_url=self.base_url,
+        )
+        self.generation_args = generation_args or GenerationArgs()
+
+    def __call__(self, chat_history: ChatHistory) -> ChatHistory:
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=chat_history,
+            max_tokens=self.generation_args.max_tokens,
+            temperature=self.generation_args.temperature,
+        )
+
+        chat_history.append({"content": response.choices[0].message.content, "role": "assistant"})
+        return chat_history
+
+    def get_model_info(self) -> str:
+        return f"vLLM Model: {self.model_name} @ {self.base_url}"
 
 
 class AnthropicModel(LanguageModel):

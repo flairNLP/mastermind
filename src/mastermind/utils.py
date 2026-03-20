@@ -1,7 +1,7 @@
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import rootutils
 
@@ -31,6 +31,23 @@ def make_output_path(base_path: Optional[Path] = None, game_type: Optional[str] 
         output_path = Path(base_path / f"results/full_game/{current_datetime}")
     output_path.mkdir(parents=True)
     return output_path
+
+
+def resolve_output_dir(base_path: Optional[Path] = None) -> Path:
+    output_dir = Path(base_path) if base_path is not None else Path.cwd() / "results"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    return output_dir
+
+
+def make_output_file_paths(base_path: Optional[Path] = None, prefix: str = "full_game") -> Tuple[Path, Path]:
+    output_dir = resolve_output_dir(base_path)
+    if base_path is None:
+        output_dir = output_dir / prefix
+        output_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S_%f")
+    results_path = output_dir / f"{prefix}_{timestamp}.jsonl"
+    summary_path = output_dir / f"{prefix}_{timestamp}_summary.json"
+    return results_path, summary_path
 
 
 def parse_guess(turn: Dict[str, str]) -> List[str]:
