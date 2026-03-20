@@ -1,11 +1,23 @@
 import json
 from argparse import ArgumentParser
+from typing import Optional
 
 from mastermind.evaluator import Evaluator
 from mastermind.game import Mastermind
-from mastermind.models import AnthropicModel, HFModel, OpenAIModel
+from mastermind.models import AnthropicModel, HFModel, OpenAIModel, VLLMModel
 from mastermind.solvers import KnuthSolver
 from mastermind.utils import print_summary
+
+
+def parse_optional_bool(value: Optional[str]) -> Optional[bool]:
+    if value is None:
+        return None
+    normalized = value.strip().lower()
+    if normalized in {"true", "1", "yes", "y", "on"}:
+        return True
+    if normalized in {"false", "0", "no", "n", "off"}:
+        return False
+    raise ValueError(f"Invalid boolean value: {value}")
 
 if __name__ == "__main__":
     parser = ArgumentParser()
@@ -19,6 +31,13 @@ if __name__ == "__main__":
     parser.add_argument("--num_runs", type=int, default=1, help="Number of runs.")
     parser.add_argument("--save_results", action="store_true", help="Save results.")
     parser.add_argument("--save_path", type=str, default=None, help="Path to save results.")
+    parser.add_argument("--base_url", type=str, default=None, help="Base URL for compatible API backends such as vLLM.")
+    parser.add_argument(
+        "--enable_thinking",
+        type=parse_optional_bool,
+        default=None,
+        help="Enable or disable thinking mode for supported chat templates such as Qwen3.",
+    )
     args = parser.parse_args()
 
     if args.generation_args:
@@ -29,11 +48,13 @@ if __name__ == "__main__":
     game = Mastermind(code_length=args.code_length, num_colors=args.num_colors)
 
     if args.model_type == "hf":
-        model = HFModel(model_name=args.model, generation_args=generation_args)
+        model = HFModel(model_name=args.model, generation_args=generation_args, enable_thinking=args.enable_thinking)
     elif args.model_type == "openai":
         model = OpenAIModel(model_name=args.model, generation_args=generation_args)
     elif args.model_type == "anthropic":
         model = AnthropicModel(model_name=args.model, generation_args=generation_args)
+    elif args.model_type == "vllm":
+        model = VLLMModel(model_name=args.model, generation_args=generation_args, base_url=args.base_url)
     elif args.model_type == "knuth":
         model = KnuthSolver(game)
 

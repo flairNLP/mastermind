@@ -1,5 +1,5 @@
 #!/bin/bash
-# export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=1
 # export ANTHROPIC_API_KEY=[key here]
 # export OPENAI_API_KEY=[key here]
 
@@ -13,9 +13,9 @@ fi
 # Dataset path
 # Loop through all provided flags
 datasets=(
-    "datasets/dataset_24_50k"
-    "datasets/dataset_35_50k"
-    "datasets/dataset_46_50k"
+    "flair/mastermind_24_prompt"
+    "flair/mastermind_36_prompt"
+    "flair/mastermind_46_prompt"
 )
 
 for flag in "$@"; do
@@ -23,20 +23,13 @@ for flag in "$@"; do
         hf)
             echo "Executing tasks for Hugging Face..."
             hf_models=(
-                "Qwen/Qwen2.5-3B-Instruct"
-                "Qwen/Qwen2.5-7B-Instruct"
-                "meta-llama/Llama-3.2-3B-Instruct"
-                "meta-llama/Llama-3.1-8B-Instruct"
-                "microsoft/Phi-3.5-mini-instruct"
-                "microsoft/phi-4"
-                'deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B'
-                "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B"
+                "Qwen/Qwen3-4B"
             )
 
             for model in "${hf_models[@]}"; do
                 for dataset in "${datasets[@]}"; do
                     echo "Running script for HF model: $model"
-                    python run_instructions.py --model_type "hf" --model "$model" --dataset "$dataset"
+                    python run_instructions.py --model_type "hf" --model "$model" --dataset "$dataset" --enable_thinking false
                 done
             done
             ;;

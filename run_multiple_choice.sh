@@ -1,5 +1,5 @@
 #!/bin/bash
-# export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=3
 # export ANTHROPIC_API_KEY=[key here]
 # export OPENAI_API_KEY=[key here]
 
@@ -10,27 +10,25 @@ if [ "$#" -lt 1 ]; then
     exit 1
 fi
 
+sanitize_model_name() {
+    echo "$1" | tr '/:' '__'
+}
+
 for flag in "$@"; do
     case $flag in
         hf)
             echo "Executing tasks for Hugging Face..."
             hf_models=(
-                "Qwen/Qwen2.5-3B-Instruct"
-                "Qwen/Qwen2.5-7B-Instruct"
-                "meta-llama/Llama-3.2-3B-Instruct"
-                "meta-llama/Llama-3.1-8B-Instruct"
-                "microsoft/Phi-3.5-mini-instruct"
-                "microsoft/phi-4"
-                'deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B'
-                "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B"
+                "Qwen/Qwen3-4B"
             )
 
             for model in "${hf_models[@]}"; do
-                model_path="${model##*/}"
-                for dataset in "${datasets[@]}"; do
-                    echo "Running script for HF model: $model"
-                    lm-eval --model hf --model_args "pretrained=$model" --tasks "mastermind" --output_path "results/eval_harness"
-                done
+                sanitized_model="$(sanitize_model_name "$model")"
+                output_dir="results/multiple_choice/${sanitized_model}"
+                echo "Running script for HF model: $model"
+                mkdir -p "$output_dir"
+                printf '{\n  "model": "%s"\n}\n' "$model" > "$output_dir/model_info.json"
+                lm-eval --model hf --model_args "pretrained=$model" --tasks "mastermind" --output_path "$output_dir"
             done
             ;;
         *)
