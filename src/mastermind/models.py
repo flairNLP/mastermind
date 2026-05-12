@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 ChatHistory = List[Dict[str, str]]
 
@@ -46,6 +46,7 @@ class HFModel(LanguageModel):
         device: str = "cuda",
         generation_args: Optional[GenerationArgs] = None,
         enable_thinking: Optional[bool] = None,
+        load_in_8bit: bool = False,
         **kwargs,
     ):
         self.model_name = model_name
@@ -54,7 +55,10 @@ class HFModel(LanguageModel):
         if self.tokenizer.pad_token_id is None and self.tokenizer.eos_token_id is not None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        if "torch_dtype" not in kwargs and device.startswith("cuda") and torch.cuda.is_available():
+        if load_in_8bit:
+            kwargs["quantization_config"] = BitsAndBytesConfig(load_in_8bit=True)
+            kwargs.setdefault("device_map", "auto")
+        elif "torch_dtype" not in kwargs and device.startswith("cuda") and torch.cuda.is_available():
             kwargs["torch_dtype"] = torch.bfloat16
 
         self.model = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True, **kwargs)
@@ -143,6 +147,7 @@ class VLLMModel(LanguageModel):
         generation_args: Optional[GenerationArgs] = None,
         base_url: Optional[str] = None,
         api_key: Optional[str] = None,
+        enable_thinking: Optional[bool] = None,
     ):
         try:
             from openai import OpenAI
@@ -150,6 +155,7 @@ class VLLMModel(LanguageModel):
             raise ImportError("Please install the openai package with 'pip install openai'")
 
         self.model_name = model_name
+        self.enable_thinking = enable_thinking
         self.base_url = base_url or os.getenv("VLLM_BASE_URL", "http://127.0.0.1:8000/v1")
         self.client = OpenAI(
             api_key=api_key or os.getenv("VLLM_API_KEY", "EMPTY"),
@@ -158,11 +164,16 @@ class VLLMModel(LanguageModel):
         self.generation_args = generation_args or GenerationArgs()
 
     def __call__(self, chat_history: ChatHistory) -> ChatHistory:
+        extra_body = {}
+        if self.enable_thinking is not None:
+            extra_body["chat_template_kwargs"] = {"enable_thinking": self.enable_thinking}
+
         response = self.client.chat.completions.create(
             model=self.model_name,
             messages=chat_history,
             max_tokens=self.generation_args.max_tokens,
             temperature=self.generation_args.temperature,
+            **({"extra_body": extra_body} if extra_body else {}),
         )
 
         chat_history.append({"content": response.choices[0].message.content, "role": "assistant"})

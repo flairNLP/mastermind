@@ -21,14 +21,13 @@ RESET = "\033[0m"
 
 
 def make_output_path(base_path: Optional[Path] = None, game_type: Optional[str] = None) -> Path:
-    if not base_path:
-        base_path = rootutils.find_root(search_from=__file__, indicator=".project-root")
-
     current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    if game_type:
-        output_path = Path(base_path / f"results/{game_type}/{current_datetime}")
+    if base_path:
+        output_path = Path(base_path) / current_datetime
     else:
-        output_path = Path(base_path / f"results/full_game/{current_datetime}")
+        root = rootutils.find_root(search_from=__file__, indicator=".project-root")
+        subfolder = game_type if game_type else "full_game"
+        output_path = Path(root) / "results" / subfolder / current_datetime
     output_path.mkdir(parents=True)
     return output_path
 

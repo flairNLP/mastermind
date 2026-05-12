@@ -167,3 +167,12 @@ cython_debug/
 
 results/
 datasets/
+*_results/
+memory/
+table.txt
+
+# Local experiment runner scripts
+run_full_game.sh
+run_instructions.sh
+run_multiple_choice.sh
+install_flash_attn.sh

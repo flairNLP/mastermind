@@ -12,6 +12,7 @@ dependencies = [
     "torch>=2.6.0",
     "huggingface-hub[cli]>=0.29.0",
     "rootutils>=1.0.7",
+    "bitsandbytes>=0.45.0",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

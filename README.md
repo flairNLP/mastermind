@@ -48,7 +48,7 @@ We provide various scripts for running different evaluation methods:
 
 ### Example Usage
 
-Below is a conceptual overview of running an evaluation using a Hugging Face model:
+**Hugging Face model:**
 
 ```python
 from mastermind.evaluator import Evaluator
@@ -56,28 +56,36 @@ from mastermind.game import Mastermind
 from mastermind.models import HFModel
 from mastermind.utils import print_summary
 
-# Load the model
 model = HFModel(model_name='deepseek-ai/DeepSeek-R1-Distill-Qwen-7B')
-
-# Initialize the game environment
 game = Mastermind(code_length=4, num_colors=6)
-
-# Create the evaluator
 evaluator = Evaluator(game, model, use_cot=True, use_fewshot_example=True)
-
-# Run the evaluation
 result = evaluator.run(num_games=100, save_results=True, save_path="results", compute_progress=True)
-
-# Display summary
 print_summary(model, game, result, num_runs=100)
 ```
 
-To use a locally served `vLLM` model instead, start the server separately and point the CLI at it:
+**vLLM (OpenAI-compatible server):**
+
+Start the server, then run via Python or CLI:
+
+```python
+from mastermind.evaluator import Evaluator
+from mastermind.game import Mastermind
+from mastermind.models import VLLMModel
+from mastermind.utils import print_summary
+
+model = VLLMModel(model_name='Qwen/Qwen2.5-7B-Instruct', base_url='http://127.0.0.1:8000/v1')
+game = Mastermind(code_length=4, num_colors=6)
+evaluator = Evaluator(game, model, use_cot=True, use_fewshot_example=True)
+result = evaluator.run(num_games=100, num_parallel=8, save_results=True, save_path="results", compute_progress=True)
+print_summary(model, game, result, num_runs=100)
+```
 
 ```bash
 vllm serve Qwen/Qwen2.5-7B-Instruct --dtype auto
-python run_full_game.py --model_type vllm --model Qwen/Qwen2.5-7B-Instruct --base_url http://127.0.0.1:8000/v1
+python run_full_game.py --model_type vllm --model Qwen/Qwen2.5-7B-Instruct --base_url http://127.0.0.1:8000/v1 --num_parallel 8
 ```
+
+> **Tip:** vLLM supports concurrent requests, so you can set `--num_parallel` to a higher value (e.g. 8–32) for much faster throughput.
 
 ---
 

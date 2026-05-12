@@ -48,6 +48,16 @@ class Mastermind:
             f"Correct color and position: {exact_matches}. Correct color but wrong position: {partial_matches}.",
         )
 
+    def clone(self) -> "Mastermind":
+        """Create an independent copy with the same color set but a freshly generated secret code."""
+        new_game = Mastermind.__new__(Mastermind)
+        new_game.code_length = self.code_length
+        new_game.num_colors = self.num_colors
+        new_game.max_guesses = self.max_guesses
+        new_game.possible_colors = list(self.possible_colors)
+        new_game.secret_code = new_game._generate_secret_code()
+        return new_game
+
     def reset(self):
         self.possible_colors = random.sample(COLORS, k=self.num_colors)
         self.secret_code = self._generate_secret_code()

@@ -38,6 +38,8 @@ if __name__ == "__main__":
         default=None,
         help="Enable or disable thinking mode for supported chat templates such as Qwen3.",
     )
+    parser.add_argument("--load_in_8bit", action="store_true", help="Load HF model in 8-bit quantization via bitsandbytes.")
+    parser.add_argument("--num_parallel", type=int, default=1, help="Number of games to run in parallel (useful with vLLM).")
     args = parser.parse_args()
 
     if args.generation_args:
@@ -48,18 +50,22 @@ if __name__ == "__main__":
     game = Mastermind(code_length=args.code_length, num_colors=args.num_colors)
 
     if args.model_type == "hf":
-        model = HFModel(model_name=args.model, generation_args=generation_args, enable_thinking=args.enable_thinking)
+        model = HFModel(model_name=args.model, generation_args=generation_args, enable_thinking=args.enable_thinking, load_in_8bit=args.load_in_8bit)
     elif args.model_type == "openai":
         model = OpenAIModel(model_name=args.model, generation_args=generation_args)
     elif args.model_type == "anthropic":
         model = AnthropicModel(model_name=args.model, generation_args=generation_args)
     elif args.model_type == "vllm":
-        model = VLLMModel(model_name=args.model, generation_args=generation_args, base_url=args.base_url)
+        model = VLLMModel(model_name=args.model, generation_args=generation_args, base_url=args.base_url, enable_thinking=args.enable_thinking)
     elif args.model_type == "knuth":
         model = KnuthSolver(game)
 
     evaluator = Evaluator(game, model, use_cot=args.use_cot, use_fewshot_example=args.use_full_example)
     result = evaluator.run(
-        num_games=args.num_runs, save_results=args.save_results, save_path=args.save_path, compute_progress=True
+        num_games=args.num_runs,
+        num_parallel=args.num_parallel,
+        save_results=args.save_results,
+        save_path=args.save_path,
+        compute_progress=True,
     )
     print_summary(model, game, result, args.num_runs)
